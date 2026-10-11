@@ -96,11 +96,49 @@ test("필지 부근 이미지 API가 VWorld 정적 지도를 PNG로 전달한다
   assert.match(target.searchParams.get("marker"), /선택 필지/);
 });
 
+test("필지 경계 API가 선택 PNU와 일치하는 GeoJSON 형상을 반환한다", async () => {
+  const geometry = {type: "MultiPolygon", coordinates: [[[[128.6097, 35.8765], [128.6098, 35.8765], [128.6097, 35.8765]]]]};
+  await withServer(async (url) => {
+    const target = new URL(url);
+    assert.equal(target.pathname, "/req/data");
+    assert.equal(target.searchParams.get("geometry"), "true");
+    return mockResponse({response: {status: "OK", result: {featureCollection: {features: [{
+      type: "Feature",
+      properties: {pnu},
+      geometry
+    }]}}}});
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/parcel-geometry?pnu=${pnu}&x=128.609748&y=35.876527`);
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.feature.properties.pnu, pnu);
+    assert.deepEqual(payload.feature.geometry, geometry);
+  });
+});
+
+test("지도 좌표에서 필지를 찾아 선택 가능한 주소 후보를 반환한다", async () => {
+  const geometry = {type: "Polygon", coordinates: [[[126.825, 37.466], [126.826, 37.466], [126.825, 37.466]]]};
+  await withServer(async () => mockResponse({response: {status: "OK", result: {featureCollection: {features: [{
+    type: "Feature",
+    properties: {pnu: "4119410600107420001", addr: "경기도 부천시 소사구 옥길동 742-1"},
+    geometry
+  }]}}}}), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/parcel-at-point?x=126.825088&y=37.466096`);
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.item.pnu, "4119410600107420001");
+    assert.equal(payload.item.parcelAddress, "경기도 부천시 소사구 옥길동 742-1");
+    assert.equal(payload.item.longitude, 126.825088);
+    assert.deepEqual(payload.feature.geometry, geometry);
+  });
+});
+
 test("잘못된 검색어와 PNU는 외부 요청 전에 거부한다", async () => {
   let calls = 0;
   await withServer(async () => { calls += 1; return mockResponse({}); }, async (baseUrl) => {
     assert.equal((await fetch(`${baseUrl}/api/address-search?q=a`)).status, 400);
     assert.equal((await fetch(`${baseUrl}/api/land-use?pnu=123`)).status, 400);
+    assert.equal((await fetch(`${baseUrl}/api/parcel-at-point?x=0&y=0`)).status, 400);
   });
   assert.equal(calls, 0);
 });

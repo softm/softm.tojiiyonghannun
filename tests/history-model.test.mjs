@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {addHistoryItem, parseHistory} from "../history-model.js";
+import {addHistoryItem, filterHistoryItems, parseHistory} from "../history-model.js";
 
 const parcel = (pnu, address) => ({
   pnu,
@@ -35,4 +35,16 @@ test("저장 기록은 유효한 PNU만 최대 6개까지 복원한다", () => {
   const history = parseHistory(raw);
   assert.equal(history.length, 6);
   assert.equal(history[0].parcelAddress, "1");
+});
+
+test("최근 조회 자동완성은 주소, 도로명, 건물명과 PNU를 검색한다", () => {
+  const history = [
+    {...parcel("4119410600107420001", "경기도 부천시 소사구 옥길동 742-1"), roadAddress: "양지로 234-10", buildingName: "옥길한신더휴"},
+    {...parcel("2714010200105510023", "대구광역시 동구 신천동 551-23"), roadAddress: "신암로16길 16"}
+  ];
+  assert.equal(filterHistoryItems(history, "옥길 742")[0].buildingName, "옥길한신더휴");
+  assert.equal(filterHistoryItems(history, "양지로")[0].pnu, "4119410600107420001");
+  assert.equal(filterHistoryItems(history, "한신더휴")[0].parcelAddress.includes("옥길동"), true);
+  assert.equal(filterHistoryItems(history, "2714010200105510023")[0].parcelAddress.includes("신천동"), true);
+  assert.equal(filterHistoryItems(history, "없는 주소").length, 0);
 });
