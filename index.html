@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#173f37" />
+    <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
+    <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문으로 바로가기</a>
+    <div class="page-glow page-glow--one" aria-hidden="true"></div>
+    <div class="page-glow page-glow--two" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="토지이용한눈 홈">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 44 44"><path d="M7 10.5 22 4l15 6.5V33L22 40 7 33Z"/><path d="m7 10.5 15 7 15-7M22 17.5V40"/><path d="m14.5 14 15-6.5"/></svg>
+        </span>
+        <span class="brand-copy"><strong>토지이용한눈</strong><small>Land Use at a Glance</small></span>
+      </a>
+      <span class="official-note">공개정보 간편 열람</span>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="heroTitle">
+        <p class="eyebrow"><span></span> 지도 없이, 주소 하나로</p>
+        <h1 id="heroTitle">이 땅에 무엇이 가능한지<br /><em>한눈에 확인하세요.</em></h1>
+        <p class="hero-copy">도로명·지번·건물명을 검색하면 용도지역과 관련 법령을 읽기 쉽게 정리해 드립니다.</p>
+
+        <form class="search-form" id="searchForm" role="search" novalidate>
+          <label for="searchInput">찾고 싶은 토지 주소</label>
+          <div class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg>
+            <input id="searchInput" name="address" type="search" autocomplete="street-address" placeholder="예: 세종대로 110, 신천동 551-23" minlength="2" maxlength="100" required />
+            <button id="searchButton" type="submit">주소 찾기</button>
+          </div>
+          <p class="search-hint">도로명, 지번, 산번지 또는 건물명으로 검색할 수 있어요.</p>
+        </form>
+
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <section class="search-results" id="searchResults" aria-labelledby="searchResultsTitle" hidden>
+          <div class="section-heading">
+            <div><span>주소 검색 결과</span><h2 id="searchResultsTitle">확인할 필지를 선택하세요</h2></div>
+            <b id="resultCount"></b>
+          </div>
+          <div class="result-list" id="resultList"></div>
+        </section>
+
+        <section class="lookup-progress" id="lookupProgress" aria-labelledby="lookupProgressTitle" aria-live="polite" aria-busy="true" hidden>
+          <div class="lookup-progress__head">
+            <div>
+              <span>선택한 필지 조회 중</span>
+              <h2 id="lookupProgressTitle">토지이용계획을 확인하고 있어요</h2>
+              <p id="lookupProgressAddress"></p>
+            </div>
+            <strong id="lookupProgressValue">12%</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true"><span id="lookupProgressBar"></span></div>
+          <ol class="lookup-steps">
+            <li class="active" data-lookup-step="1"><i></i><span><b>필지 확인</b><small>주소와 PNU를 확인합니다</small></span></li>
+            <li data-lookup-step="2"><i></i><span><b>계획 조회</b><small>토지이음 공개정보를 불러옵니다</small></span></li>
+            <li data-lookup-step="3"><i></i><span><b>정보 정리</b><small>지역·지구와 법령을 정리합니다</small></span></li>
+          </ol>
+          <div class="lookup-skeleton" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </section>
+      </section>
+
+      <section class="summary" id="summary" aria-labelledby="summaryTitle" hidden>
+        <div class="summary-heading">
+          <div>
+            <p class="eyebrow"><span></span> 토지이용계획 열람 요약</p>
+            <h2 id="summaryTitle">선택한 필지</h2>
+            <p id="summaryRoad"></p>
+          </div>
+          <span class="reference-badge">참고용</span>
+        </div>
+
+        <dl class="fact-grid" id="factGrid"></dl>
+
+        <div class="summary-grid">
+          <article class="info-card">
+            <header><span class="card-number">01</span><div><small>국토계획법</small><h3>용도지역·지구</h3></div></header>
+            <div id="nationalPlan"></div>
+          </article>
+          <article class="info-card">
+            <header><span class="card-number">02</span><div><small>개별 법령</small><h3>다른 법령의 지정</h3></div></header>
+            <div id="otherLaws"></div>
+          </article>
+          <article class="info-card info-card--wide">
+            <header><span class="card-number">03</span><div><small>근거 법령</small><h3>주요 행위제한</h3></div></header>
+            <div id="restrictions"></div>
+          </article>
+        </div>
+
+        <div class="summary-actions">
+          <a class="primary-action" id="officialLink" href="https://www.eum.go.kr/" target="_blank" rel="noopener noreferrer">
+            토지이음에서 원문 보기 <span aria-hidden="true">↗</span>
+          </a>
+          <button class="download-action" id="downloadReport" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3h14v-3"/></svg>
+            PDF 보고서 다운로드
+          </button>
+          <button class="secondary-action" id="searchAgain" type="button">다른 주소 검색</button>
+        </div>
+        <p class="legal-notice">이 화면은 공개된 정보를 이해하기 쉽게 정리한 참고자료이며 공식 확인서가 아닙니다. 인허가·거래 등 법적 판단이 필요한 경우 토지이음 원문과 관계기관을 통해 다시 확인하세요.</p>
+      </section>
+
+      <section class="process" aria-label="이용 방법">
+        <article><span>1</span><div><strong>주소 검색</strong><p>도로명이나 지번을 입력합니다.</p></div></article>
+        <i aria-hidden="true"></i>
+        <article><span>2</span><div><strong>필지 선택</strong><p>정확한 지번을 확인합니다.</p></div></article>
+        <i aria-hidden="true"></i>
+        <article><span>3</span><div><strong>계획 확인</strong><p>지역·지구와 법령을 살펴봅니다.</p></div></article>
+      </section>
+    </main>
+
+    <footer>
+      <strong>토지이용한눈</strong>
+      <p>공간정보 오픈플랫폼 VWorld · 토지이음 공개정보를 활용합니다.</p>
+    </footer>
+
+    <div class="export-progress" id="exportProgress" role="dialog" aria-modal="true" aria-labelledby="exportProgressTitle" hidden>
+      <div class="export-progress__card">
+        <span class="export-progress__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
+        </span>
+        <div>
+          <small>PDF 보고서</small>
+          <h2 id="exportProgressTitle">보고서를 만들고 있어요</h2>
+          <p id="exportProgressMessage">조회 내용을 정리하는 중입니다.</p>
+        </div>
+        <strong id="exportProgressValue">10%</strong>
+        <div class="progress-track"><span id="exportProgressBar"></span></div>
+      </div>
+    </div>
+
+    <script src="./node_modules/html2canvas/dist/html2canvas.min.js"></script>
+    <script src="./node_modules/jspdf/dist/jspdf.umd.min.js"></script>
+    <script src="./report-export.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

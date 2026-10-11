@@ -1,0 +1,19 @@
+{
+  "name": "land-use-at-a-glance",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "주소로 토지이용계획 핵심 내용을 확인하고 토지이음 원문으로 연결하는 웹 앱",
+  "engines": {
+    "node": ">=20.18.1"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.0"
+  }
+}
