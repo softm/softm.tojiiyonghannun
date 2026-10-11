@@ -1,12 +1,12 @@
-import {buildReportModel} from "./report-model.js";
-import {addHistoryItem, filterHistoryItems, parseHistory} from "./history-model.js";
+import {buildReportModel} from "./report-model.js?v=20261012-2";
+import {addHistoryItem, filterHistoryItems, parseHistory} from "./history-model.js?v=20261012-2";
 import {
   requestAddressSearch,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js";
+} from "./browser-api.js?v=20261012-2";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;

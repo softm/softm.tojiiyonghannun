@@ -1,4 +1,4 @@
-import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js";
+import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js?v=20261012-2";
 
 (function () {
   "use strict";
