@@ -5,6 +5,7 @@ import {
   isValidPnu,
   mergeSearchItems,
   normalizePricePayload,
+  normalizePlaceCandidates,
   normalizeSearchItems,
   parseEumLandUseHtml
 } from "../lib/land-use.mjs";
@@ -21,10 +22,25 @@ test("PNU 검증과 공식 토지이음 URL 생성", () => {
   assert.equal(url.searchParams.get("bubn"), "23");
 });
 
+test("장소 검색 결과에서 필지 확인용 주소와 명칭을 추출한다", () => {
+  const candidates = normalizePlaceCandidates({response: {status: "OK", result: {items: [{
+    id: "POI-1",
+    title: "옥길한신더휴",
+    category: "시설구역경계 > 아파트단지",
+    address: {parcel: "경기도 부천시 소사구 옥길동 742-1", road: "경기도 부천시 소사구 양지로 234-10"},
+    point: {x: "126.825088", y: "37.466096"}
+  }]}}});
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].title, "옥길한신더휴");
+  assert.equal(candidates[0].parcelAddress, "경기도 부천시 소사구 옥길동 742-1");
+  assert.equal(candidates[0].longitude, 126.825088);
+});
+
 test("도로명과 지번 검색 결과를 PNU 기준으로 합친다", () => {
   const roadPayload = {response: {status: "OK", result: {items: [{
     id: pnu,
-    address: {road: "대구광역시 동구 신암로16길 16", parcel: "대구광역시 동구 신천동 551-23", bldnm: "가람타운"}
+    address: {road: "대구광역시 동구 신암로16길 16", parcel: "대구광역시 동구 신천동 551-23", bldnm: "가람타운"},
+    point: {x: "128.609748", y: "35.876527"}
   }]}}};
   const parcelPayload = {response: {status: "OK", result: {items: [{
     id: pnu,
@@ -38,6 +54,8 @@ test("도로명과 지번 검색 결과를 PNU 기준으로 합친다", () => {
   assert.deepEqual(items[0].matchTypes, ["road", "parcel"]);
   assert.equal(items[0].pnu, pnu);
   assert.equal(items[0].buildingName, "가람타운");
+  assert.equal(items[0].longitude, 128.609748);
+  assert.equal(items[0].latitude, 35.876527);
 });
 
 test("토지이음 HTML에서 핵심 내용과 행위제한을 추출한다", () => {

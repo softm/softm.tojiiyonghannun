@@ -26,12 +26,14 @@ test("주소 검색 API가 두 검색 범주를 합쳐 반환한다", async () =
   let calls = 0;
   const fetchImpl = async (url) => {
     calls += 1;
-    const category = new URL(url).searchParams.get("category");
+    const target = new URL(url);
+    if (target.searchParams.get("type") === "place") return mockResponse({response: {status: "NOT_FOUND"}});
+    const category = target.searchParams.get("category");
     return mockResponse({response: {status: "OK", result: {items: [{id: pnu, address: {
       road: "대구광역시 동구 신암로16길 16",
       parcel: "대구광역시 동구 신천동 551-23",
       bldnm: category === "road" ? "가람타운" : ""
-    }}]}}});
+    }, point: {x: "128.609748", y: "35.876527"}}]}}});
   };
   await withServer(fetchImpl, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/address-search?q=${encodeURIComponent("신천동 551-23")}`);
@@ -39,8 +41,59 @@ test("주소 검색 API가 두 검색 범주를 합쳐 반환한다", async () =
     assert.equal(response.status, 200);
     assert.equal(payload.items.length, 1);
     assert.deepEqual(payload.items[0].matchTypes, ["road", "parcel"]);
+    assert.equal(payload.items[0].longitude, 128.609748);
   });
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
+});
+
+test("건물명 검색 결과를 지번주소로 재검색해 PNU 후보로 반환한다", async () => {
+  const buildingPnu = "4119410600107420001";
+  const fetchImpl = async (url) => {
+    const target = new URL(url);
+    const type = target.searchParams.get("type");
+    const query = target.searchParams.get("query");
+    if (type === "place") {
+      return mockResponse({response: {status: "OK", result: {items: [{
+        id: "POI-1",
+        title: "옥길한신더휴",
+        category: "시설구역경계 > 아파트단지",
+        address: {parcel: "경기도 부천시 소사구 옥길동 742-1", road: "경기도 부천시 소사구 양지로 234-10"},
+        point: {x: "126.825088", y: "37.466096"}
+      }]}}});
+    }
+    if (query === "옥길한신더휴") return mockResponse({response: {status: "NOT_FOUND"}});
+    return mockResponse({response: {status: "OK", result: {items: [{
+      id: buildingPnu,
+      address: {parcel: "경기도 부천시 소사구 옥길동 742-1", road: "경기도 부천시 소사구 양지로 234-10"},
+      point: {x: "126.825088", y: "37.466096"}
+    }]}}});
+  };
+  await withServer(fetchImpl, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/address-search?q=${encodeURIComponent("옥길한신더휴")}`);
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.items[0].pnu, buildingPnu);
+    assert.equal(payload.items[0].buildingName, "옥길한신더휴");
+    assert.deepEqual(payload.items[0].matchTypes, ["place"]);
+  });
+});
+
+test("필지 부근 이미지 API가 VWorld 정적 지도를 PNG로 전달한다", async () => {
+  const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]);
+  let upstreamUrl = "";
+  await withServer(async (url) => {
+    upstreamUrl = String(url);
+    return new Response(png, {status: 200, headers: {"Content-Type": "image/png"}});
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/vicinity-map?pnu=${pnu}&x=128.609748&y=35.876527`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "image/png");
+    assert.deepEqual(new Uint8Array(await response.arrayBuffer()), png);
+  });
+  const target = new URL(upstreamUrl);
+  assert.equal(target.pathname, "/req/image");
+  assert.equal(target.searchParams.get("basemap"), "PHOTO_HYBRID");
+  assert.match(target.searchParams.get("marker"), /선택 필지/);
 });
 
 test("잘못된 검색어와 PNU는 외부 요청 전에 거부한다", async () => {
