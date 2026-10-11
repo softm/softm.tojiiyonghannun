@@ -1,12 +1,12 @@
-import {buildReportModel} from "./report-model.js?v=20261012-2";
-import {addHistoryItem, filterHistoryItems, parseHistory} from "./history-model.js?v=20261012-2";
+import {buildReportModel} from "./report-model.js?v=20261012-3";
+import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-3";
 import {
   requestAddressSearch,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js?v=20261012-2";
+} from "./browser-api.js?v=20261012-3";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;
@@ -34,6 +34,7 @@ const elements = {
   historyAutocompleteCount: $("#historyAutocompleteCount"),
   status: $("#status"),
   results: $("#searchResults"),
+  resultQuery: $("#searchResultQuery"),
   resultList: $("#resultList"),
   resultCount: $("#resultCount"),
   recentHistory: $("#recentHistory"),
@@ -87,6 +88,7 @@ let selectedData;
 let lookupProgressTimer;
 let lookupPercent = 12;
 let recentHistory = loadHistory();
+let searchViewMode = "idle";
 let reportObjectUrl = "";
 let autocompleteItems = [];
 let autocompleteIndex = -1;
@@ -133,7 +135,7 @@ function formatHistoryDate(timestamp) {
 
 function renderHistory() {
   elements.historyList.replaceChildren();
-  elements.recentHistory.hidden = recentHistory.length === 0;
+  elements.recentHistory.hidden = !shouldShowRecentHistory(recentHistory, searchViewMode);
   recentHistory.forEach((item) => {
     const button = createElement("button", "recent-history__item");
     button.type = "button";
@@ -150,6 +152,11 @@ function renderHistory() {
     });
     elements.historyList.append(button);
   });
+}
+
+function setSearchViewMode(mode) {
+  searchViewMode = mode;
+  elements.recentHistory.hidden = !shouldShowRecentHistory(recentHistory, searchViewMode);
 }
 
 function closeHistoryAutocomplete() {
@@ -273,9 +280,10 @@ function createElement(tag, className, text) {
   return node;
 }
 
-function renderSearchResults(items) {
+function renderSearchResults(items, query) {
   elements.resultList.replaceChildren();
   elements.results.hidden = false;
+  elements.resultQuery.textContent = `“${query}” 검색 결과`;
   elements.resultCount.textContent = `${items.length}개 결과`;
   if (!items.length) {
     elements.resultList.append(createElement("p", "empty-result", "일치하는 필지를 찾지 못했어요. 시·군·구와 읍면동, 지번을 함께 입력해 보세요."));
@@ -301,13 +309,15 @@ async function searchAddress(query) {
   searchController?.abort();
   searchController = new AbortController();
   closeHistoryAutocomplete();
+  setSearchViewMode("active");
   setSearchLoading(true);
   setStatus("주소와 연결된 필지를 찾고 있어요.");
   hideLookupProgress();
+  elements.results.hidden = true;
   elements.summary.hidden = true;
   try {
     const payload = await requestAddressSearch(query, searchController.signal);
-    renderSearchResults(payload.items || []);
+    renderSearchResults(payload.items || [], query);
     setStatus(payload.partial ? "일부 주소 검색 결과만 표시했습니다." : "");
   } catch (error) {
     if (error.name === "AbortError") return;
@@ -595,6 +605,7 @@ async function selectParcel(item) {
   detailController = new AbortController();
   selectedItem = item;
   selectedData = null;
+  setSearchViewMode("active");
   rememberParcel(item);
   elements.results.hidden = true;
   elements.summary.hidden = true;
@@ -729,7 +740,15 @@ elements.form.addEventListener("submit", (event) => {
 });
 
 elements.input.addEventListener("focus", renderHistoryAutocomplete);
-elements.input.addEventListener("input", renderHistoryAutocomplete);
+elements.input.addEventListener("input", () => {
+  renderHistoryAutocomplete();
+  if (!elements.input.value.trim() && elements.summary.hidden) {
+    searchController?.abort();
+    elements.results.hidden = true;
+    setStatus("");
+    setSearchViewMode("idle");
+  }
+});
 elements.input.addEventListener("keydown", (event) => {
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     if (elements.historyAutocomplete.hidden) renderHistoryAutocomplete();
@@ -762,6 +781,7 @@ elements.searchAgain.addEventListener("click", () => {
   hideLookupProgress();
   elements.summary.hidden = true;
   elements.results.hidden = true;
+  setSearchViewMode("idle");
   setStatus("");
   elements.input.select();
   elements.input.focus();

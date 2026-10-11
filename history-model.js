@@ -53,4 +53,8 @@ export function filterHistoryItems(history, query, limit = MAX_HISTORY_ITEMS) {
   }).slice(0, Math.max(0, Number(limit) || 0));
 }
 
+export function shouldShowRecentHistory(history, viewMode) {
+  return Array.isArray(history) && history.length > 0 && viewMode === "idle";
+}
+
 export {MAX_HISTORY_ITEMS};
