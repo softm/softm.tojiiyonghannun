@@ -236,6 +236,93 @@ async function handleVicinityMap(response, incomingUrl, fetchImpl, getConfig) {
   }
 }
 
+async function fetchParcelFeature(fetchImpl, config, longitude, latitude, pnu = "") {
+  const datasets = ["LP_PA_CBND_BUBUN", "LP_PA_CBND_BONBUN"];
+  const settled = await Promise.allSettled(datasets.map(async (dataset) => {
+    const target = new URL("https://api.vworld.kr/req/data");
+    Object.entries({
+      service: "data",
+      request: "GetFeature",
+      data: dataset,
+      size: "10",
+      page: "1",
+      format: "json",
+      geometry: "true",
+      attribute: "true",
+      crs: "EPSG:4326",
+      geomFilter: `POINT(${longitude} ${latitude})`,
+      key: config.vworldApiKey,
+      domain: config.vworldDomain
+    }).forEach(([key, value]) => target.searchParams.set(key, value));
+    const payload = await fetchJson(fetchImpl, target, {
+      headers: {"Accept": "application/json", "Referer": `https://${config.vworldDomain}/`, "User-Agent": "TojiIyongHannun/1.0"},
+      signal: AbortSignal.timeout(12000)
+    });
+    const features = payload?.response?.result?.featureCollection?.features || [];
+    const feature = pnu
+      ? features.find((item) => String(item?.properties?.pnu || "") === pnu)
+      : features.find((item) => isValidPnu(String(item?.properties?.pnu || "")));
+    return feature?.geometry ? {dataset, feature} : null;
+  }));
+  return settled.find((result) => result.status === "fulfilled" && result.value)?.value || null;
+}
+
+async function handleParcelGeometry(response, incomingUrl, fetchImpl, getConfig) {
+  const pnu = String(incomingUrl.searchParams.get("pnu") || "");
+  const longitude = Number(incomingUrl.searchParams.get("x"));
+  const latitude = Number(incomingUrl.searchParams.get("y"));
+  if (!isValidPnu(pnu) || !isValidKoreaCoordinate(longitude, latitude)) {
+    writeJson(response, 400, {error: "유효한 PNU와 국내 필지 좌표가 필요합니다."});
+    return;
+  }
+  try {
+    const result = await fetchParcelFeature(fetchImpl, getConfig(), longitude, latitude, pnu);
+    if (!result) {
+      writeJson(response, 404, {error: "선택한 필지의 경계를 찾지 못했습니다."});
+      return;
+    }
+    writeJson(response, 200, result, "private, max-age=86400");
+  } catch (error) {
+    console.error("필지 경계 연결 실패:", error.message);
+    writeJson(response, 502, {error: "선택한 필지의 경계를 불러오지 못했습니다."});
+  }
+}
+
+async function handleParcelAtPoint(response, incomingUrl, fetchImpl, getConfig) {
+  const longitude = Number(incomingUrl.searchParams.get("x"));
+  const latitude = Number(incomingUrl.searchParams.get("y"));
+  if (!isValidKoreaCoordinate(longitude, latitude)) {
+    writeJson(response, 400, {error: "국내 지도 좌표가 필요합니다."});
+    return;
+  }
+  try {
+    const result = await fetchParcelFeature(fetchImpl, getConfig(), longitude, latitude);
+    if (!result) {
+      writeJson(response, 404, {error: "이 위치에서 필지를 찾지 못했습니다."});
+      return;
+    }
+    const properties = result.feature.properties || {};
+    const pnu = String(properties.pnu || "");
+    const parcelAddress = String(properties.addr || properties.jibun || "선택한 필지").trim();
+    writeJson(response, 200, {
+      ...result,
+      item: {
+        pnu,
+        primaryAddress: parcelAddress,
+        parcelAddress,
+        roadAddress: "",
+        buildingName: "",
+        matchTypes: ["parcel"],
+        longitude,
+        latitude
+      }
+    }, "private, max-age=3600");
+  } catch (error) {
+    console.error("지도 필지 선택 연결 실패:", error.message);
+    writeJson(response, 502, {error: "지도에서 필지를 확인하지 못했습니다."});
+  }
+}
+
 async function handleLandUse(response, incomingUrl, fetchImpl, getConfig) {
   const pnu = String(incomingUrl.searchParams.get("pnu") || "");
   if (!isValidPnu(pnu)) {
@@ -283,7 +370,7 @@ function serveStatic(response, pathname) {
   response.writeHead(200, {
     "Content-Type": mimeTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream",
     "Cache-Control": "no-cache",
-    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'self' https://www.eum.go.kr; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; img-src 'self' data: blob: https://xdworld.vworld.kr https://api.vworld.kr; connect-src 'self' https://xdworld.vworld.kr https://api.vworld.kr https://www.eum.go.kr; frame-src 'self' blob:; base-uri 'none'; form-action 'self' https://www.eum.go.kr; frame-ancestors 'none'",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff"
   });
@@ -308,6 +395,14 @@ export function createAppServer({fetchImpl = fetch, getConfig = readLocalConfig}
     }
     if (incomingUrl.pathname === "/api/vicinity-map") {
       await handleVicinityMap(response, incomingUrl, fetchImpl, getConfig);
+      return;
+    }
+    if (incomingUrl.pathname === "/api/parcel-geometry") {
+      await handleParcelGeometry(response, incomingUrl, fetchImpl, getConfig);
+      return;
+    }
+    if (incomingUrl.pathname === "/api/parcel-at-point") {
+      await handleParcelAtPoint(response, incomingUrl, fetchImpl, getConfig);
       return;
     }
     serveStatic(response, incomingUrl.pathname);

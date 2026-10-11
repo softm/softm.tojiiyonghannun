@@ -12,17 +12,19 @@ cp config.example.js config.local.js
 npm start
 ```
 
-`config.local.js`에 VWorld 인증키와 인증 도메인을 입력한 뒤 `http://localhost:4173`을 엽니다. 운영 환경에서는 파일 대신 `VWORLD_API_KEY`, `VWORLD_DOMAIN`, `PORT` 환경변수를 사용할 수 있습니다.
+`config.local.js`에 VWorld 인증키와 인증 도메인을 입력한 뒤 `http://localhost:4173`을 엽니다. 이 파일은 Git에서 제외됩니다. Node 서버 운영 환경에서는 파일 대신 `VWORLD_API_KEY`, `VWORLD_DOMAIN`, `PORT` 환경변수를 사용할 수 있습니다.
+
+GitHub Pages의 `tojiiyonghannun.designboard.net`에서는 등록 도메인 전용 VWorld 브라우저 키와 JSONP를 사용해 주소·건물명·필지 검색을 직접 처리합니다. 토지이음은 CORS 허용 응답을 직접 조회하며, 보고서 지도는 CORS가 허용된 VWorld 항공·도로 타일을 브라우저에서 합성합니다. 브라우저 키는 공개 클라이언트 식별자이므로 반드시 해당 운영 도메인으로 제한된 키만 사용합니다.
 
 ## 기능
 
 - 도로명·지번·건물명 통합 검색
 - 검색 후보의 지번주소·도로명주소·PNU 확인
-- 최근 조회한 필지를 브라우저에 최대 6개 저장하고 바로 다시 조회
+- 최근 조회한 필지를 브라우저에 최대 6개 저장하고 검색창 자동완성 또는 목록에서 바로 다시 조회
 - 토지이음의 소재지, 지목, 면적, 지역·지구, 행위제한 근거 요약
 - VWorld 공개 데이터 기반 개별공시지가 보완
 - 선택 필지의 토지이음 공식 열람 화면 연결
-- 선택 필지 좌표를 기준으로 VWorld 항공·도로 혼합 지도 보기
+- VWorld 일반·위성 지도에서 주소·건물명을 검색하거나 지도를 눌러 필지 경계를 확인하고 선택
 - 조회 단계와 진행률 표시
 - 조회 결과를 다중 페이지 PDF 뷰어로 미리보고 필요할 때 다운로드
 - PDF 보고서에 선택 필지의 VWorld 항공·도로 혼합 주변 이미지 포함

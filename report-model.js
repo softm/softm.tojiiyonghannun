@@ -47,7 +47,8 @@ export function buildReportModel(data, item, generatedAt = new Date()) {
     vicinity: hasVicinity ? {
       longitude,
       latitude,
-      imageUrl: `/api/vicinity-map?pnu=${encodeURIComponent(pnu)}&x=${encodeURIComponent(longitude)}&y=${encodeURIComponent(latitude)}`
+      imageUrl: `/api/vicinity-map?pnu=${encodeURIComponent(pnu)}&x=${encodeURIComponent(longitude)}&y=${encodeURIComponent(latitude)}`,
+      geometryUrl: `/api/parcel-geometry?pnu=${encodeURIComponent(pnu)}&x=${encodeURIComponent(longitude)}&y=${encodeURIComponent(latitude)}`
     } : null,
     sections: [
       {

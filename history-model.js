@@ -38,4 +38,19 @@ export function addHistoryItem(history, item, viewedAt = Date.now()) {
   return [normalized, ...history.filter((entry) => entry.pnu !== normalized.pnu)].slice(0, MAX_HISTORY_ITEMS);
 }
 
+function searchText(value) {
+  return text(value).toLocaleLowerCase("ko-KR");
+}
+
+export function filterHistoryItems(history, query, limit = MAX_HISTORY_ITEMS) {
+  const tokens = searchText(query).split(/\s+/).filter(Boolean);
+  return history.filter((item) => {
+    if (!tokens.length) return true;
+    const fields = [item?.parcelAddress, item?.primaryAddress, item?.roadAddress, item?.buildingName, item?.pnu]
+      .map(searchText)
+      .filter(Boolean);
+    return tokens.every((token) => fields.some((field) => field.includes(token)));
+  }).slice(0, Math.max(0, Number(limit) || 0));
+}
+
 export {MAX_HISTORY_ITEMS};

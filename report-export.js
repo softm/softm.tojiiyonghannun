@@ -1,3 +1,5 @@
+import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js";
+
 (function () {
   "use strict";
 
@@ -48,7 +50,7 @@
     if (!model.vicinity) return "";
     const location = `${Number(model.vicinity.longitude).toFixed(6)}, ${Number(model.vicinity.latitude).toFixed(6)}`;
     const image = model.vicinity.imageDataUrl
-      ? `<img src="${escapeHtml(model.vicinity.imageDataUrl)}" alt="선택한 필지 부근 항공 지도">`
+      ? `<img src="${escapeHtml(model.vicinity.imageDataUrl)}" alt="선택한 필지 경계가 강조된 주변 항공 지도">`
       : `<div class="download-report__map-error">필지 부근 이미지를 불러오지 못했습니다.<br>보고서의 주소와 토지이음 원문을 함께 확인해 주세요.</div>`;
     return `<article class="download-report" aria-hidden="true">
       ${pageHeaderHtml(model, {title: "필지 부근 위치", compact: true})}
@@ -56,10 +58,10 @@
         <h2>필지 부근 위치</h2>
         <div class="download-report__map">${image}</div>
         <div class="download-report__map-caption">
-          <strong><i></i> 선택 필지 검색 위치</strong>
+          <strong><i></i> 선택 필지 경계 강조</strong>
           <span>좌표 ${escapeHtml(location)} · VWorld 항공·도로 혼합 지도</span>
         </div>
-        <p>주소 검색 결과의 중심점을 기준으로 주변을 표시한 참고 이미지입니다. 붉은 표식은 검색 위치이며 정확한 필지 경계를 뜻하지 않습니다.</p>
+        <p>주소 검색 위치를 기준으로 조회한 연속지적도 경계를 강조한 참고 이미지입니다. 실제 경계와 법적 지적도는 관계기관의 공식 자료로 다시 확인하세요.</p>
       </section>
       <footer class="download-report__footer"><span>지도 출처: 공간정보 오픈플랫폼 VWorld</span><span>PNU ${escapeHtml(model.pnu)}</span></footer>
     </article>`;
@@ -123,14 +125,44 @@
   }
 
   async function loadVicinityImage(model, onProgress) {
-    if (!model.vicinity?.imageUrl) return model;
+    if (!model.vicinity) return model;
     notify(onProgress, 14, "필지 부근 항공 지도를 불러오고 있어요.");
     try {
+      if (model.vicinity.useTileMap) {
+        const imageDataUrl = await composeVworldTileMap({
+          geometry: model.vicinity.geometry || null,
+          longitude: model.vicinity.longitude,
+          latitude: model.vicinity.latitude,
+          address: model.address
+        });
+        notify(onProgress, 19, "지도에 선택 필지 경계를 표시하고 있어요.");
+        return {...model, vicinity: {...model.vicinity, imageDataUrl, hasBoundary: Boolean(model.vicinity.geometry)}};
+      }
+      if (!model.vicinity.imageUrl) return model;
       const response = await fetch(model.vicinity.imageUrl, {headers: {Accept: "image/png"}});
       if (!response.ok) throw new Error(`필지 부근 이미지 HTTP ${response.status}`);
       const blob = await response.blob();
       if (blob.type !== "image/png") throw new Error("필지 부근 이미지 형식이 올바르지 않습니다.");
-      return {...model, vicinity: {...model.vicinity, imageDataUrl: await blobToDataUrl(blob)}};
+      const imageDataUrl = await blobToDataUrl(blob);
+      let geometry = model.vicinity.geometry || null;
+      if (!geometry && model.vicinity.geometryUrl) {
+        notify(onProgress, 17, "선택한 필지 경계를 확인하고 있어요.");
+        try {
+          const geometryResponse = await fetch(model.vicinity.geometryUrl, {headers: {Accept: "application/json"}});
+          if (geometryResponse.ok) geometry = (await geometryResponse.json())?.feature?.geometry || null;
+        } catch (error) {
+          console.warn("Parcel geometry unavailable", error);
+        }
+      }
+      notify(onProgress, 19, geometry ? "지도에 선택 필지 경계를 표시하고 있어요." : "필지 위치 지도를 정리하고 있어요.");
+      const composedImage = await composeParcelMap({
+        imageDataUrl,
+        geometry,
+        longitude: model.vicinity.longitude,
+        latitude: model.vicinity.latitude,
+        address: model.address
+      });
+      return {...model, vicinity: {...model.vicinity, imageDataUrl: composedImage, hasBoundary: Boolean(geometry)}};
     } catch (error) {
       console.warn("Vicinity image unavailable", error);
       return {...model, vicinity: {...model.vicinity, imageError: true}};

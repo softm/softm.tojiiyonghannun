@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#173f37" />
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -33,8 +34,15 @@
           <label for="searchInput">찾고 싶은 토지 주소</label>
           <div class="search-field">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg>
-            <input id="searchInput" name="address" type="search" autocomplete="street-address" placeholder="예: 세종대로 110, 신천동 551-23" minlength="2" maxlength="100" required />
+            <input id="searchInput" name="address" type="search" autocomplete="off" placeholder="예: 세종대로 110, 신천동 551-23" minlength="2" maxlength="100" role="combobox" aria-autocomplete="list" aria-controls="historyAutocompleteList" aria-expanded="false" required />
             <button id="searchButton" type="submit">주소 찾기</button>
+          </div>
+          <div class="history-autocomplete" id="historyAutocomplete" hidden>
+            <div class="history-autocomplete__head">
+              <strong>최근 조회 자동완성</strong>
+              <span id="historyAutocompleteCount"></span>
+            </div>
+            <div class="history-autocomplete__list" id="historyAutocompleteList" role="listbox" aria-label="최근 조회 필지 자동완성"></div>
           </div>
           <p class="search-hint">도로명, 지번, 산번지 또는 건물명으로 검색할 수 있어요.</p>
         </form>
@@ -158,23 +166,39 @@
       <div class="map-dialog__panel">
         <header class="map-dialog__head">
           <div>
-            <small>VWorld 항공·도로 혼합 지도</small>
-            <h2 id="mapDialogTitle">선택한 필지 주변</h2>
+            <small>VWorld 필지 선택 지도</small>
+            <h2 id="mapDialogTitle">지도에서 필지를 찾아보세요</h2>
             <p id="mapDialogAddress"></p>
           </div>
           <button class="map-dialog__close" id="closeMap" type="button" aria-label="지도 닫기">×</button>
         </header>
-        <div class="map-dialog__canvas" id="mapCanvas">
+        <div class="map-dialog__toolbar">
+          <form class="map-search" id="mapSearchForm" role="search">
+            <label class="sr-only" for="mapSearchInput">지도에서 주소 또는 건물명 검색</label>
+            <input id="mapSearchInput" type="search" autocomplete="off" placeholder="주소·지번·건물명 검색" minlength="2" maxlength="100" />
+            <button id="mapSearchButton" type="submit">검색</button>
+          </form>
+          <div class="map-mode-switch" role="group" aria-label="지도 유형">
+            <button type="button" data-map-layer="normal">일반</button>
+            <button class="active" type="button" data-map-layer="satellite">위성</button>
+          </div>
+        </div>
+        <div class="map-search-results" id="mapSearchResults" aria-label="지도 검색 결과" hidden></div>
+        <div class="map-dialog__canvas" id="interactiveMap" aria-label="필지를 선택할 수 있는 VWorld 지도">
           <div class="map-dialog__loading" id="mapLoading" role="status">
             <i aria-hidden="true"></i>
             <span>지도를 불러오고 있어요.</span>
           </div>
-          <img id="mapImage" alt="" hidden />
           <p class="map-dialog__error" id="mapError" role="alert" hidden>지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+          <div class="map-click-guide">지도를 눌러 필지를 선택할 수 있어요</div>
         </div>
         <div class="map-dialog__foot">
-          <p><b><i></i> 선택 필지 검색 위치</b><span id="mapCoordinate"></span></p>
-          <small>붉은 표식은 주소 검색 위치이며 정확한 필지 경계를 뜻하지 않습니다. 지도 출처: 공간정보 오픈플랫폼 VWorld</small>
+          <div class="map-selection-copy">
+            <b><i></i><span id="mapSelectionTitle">선택한 필지</span></b>
+            <span id="mapCoordinate"></span>
+            <small id="mapSelectionHint">검색 결과를 고르거나 지도를 눌러 필지를 선택하세요.</small>
+          </div>
+          <button class="map-select-action" id="mapSelectParcel" type="button" disabled>이 필지 선택</button>
         </div>
       </div>
     </dialog>
@@ -196,9 +220,10 @@
       </div>
     </dialog>
 
-    <script src="./node_modules/html2canvas/dist/html2canvas.min.js"></script>
-    <script src="./node_modules/jspdf/dist/jspdf.umd.min.js"></script>
-    <script src="./report-export.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
+    <script type="module" src="./report-export.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

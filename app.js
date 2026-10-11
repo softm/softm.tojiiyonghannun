@@ -1,5 +1,25 @@
 import {buildReportModel} from "./report-model.js";
-import {addHistoryItem, parseHistory} from "./history-model.js";
+import {addHistoryItem, filterHistoryItems, parseHistory} from "./history-model.js";
+import {
+  requestAddressSearch,
+  requestLandUse,
+  requestParcelAtPoint,
+  requestParcelGeometry,
+  usesDirectBrowserApi
+} from "./browser-api.js";
+
+const {Map: OLMap, View, Feature} = ol;
+const TileLayer = ol.layer.Tile;
+const VectorLayer = ol.layer.Vector;
+const XYZ = ol.source.XYZ;
+const VectorSource = ol.source.Vector;
+const Point = ol.geom.Point;
+const GeoJSON = ol.format.GeoJSON;
+const {fromLonLat, toLonLat} = ol.proj;
+const Style = ol.style.Style;
+const Stroke = ol.style.Stroke;
+const Fill = ol.style.Fill;
+const CircleStyle = ol.style.Circle;
 
 const HISTORY_STORAGE_KEY = "tojiiyonghannun.recent-parcels.v1";
 
@@ -9,6 +29,9 @@ const elements = {
   form: $("#searchForm"),
   input: $("#searchInput"),
   button: $("#searchButton"),
+  historyAutocomplete: $("#historyAutocomplete"),
+  historyAutocompleteList: $("#historyAutocompleteList"),
+  historyAutocompleteCount: $("#historyAutocompleteCount"),
   status: $("#status"),
   results: $("#searchResults"),
   resultList: $("#resultList"),
@@ -33,9 +56,16 @@ const elements = {
   mapDialogTitle: $("#mapDialogTitle"),
   mapDialogAddress: $("#mapDialogAddress"),
   mapCoordinate: $("#mapCoordinate"),
-  mapImage: $("#mapImage"),
+  interactiveMap: $("#interactiveMap"),
   mapLoading: $("#mapLoading"),
   mapError: $("#mapError"),
+  mapSearchForm: $("#mapSearchForm"),
+  mapSearchInput: $("#mapSearchInput"),
+  mapSearchButton: $("#mapSearchButton"),
+  mapSearchResults: $("#mapSearchResults"),
+  mapSelectionTitle: $("#mapSelectionTitle"),
+  mapSelectionHint: $("#mapSelectionHint"),
+  mapSelectParcel: $("#mapSelectParcel"),
   closeMap: $("#closeMap"),
   downloadReport: $("#downloadReport"),
   reportDialog: $("#reportDialog"),
@@ -58,6 +88,26 @@ let lookupProgressTimer;
 let lookupPercent = 12;
 let recentHistory = loadHistory();
 let reportObjectUrl = "";
+let autocompleteItems = [];
+let autocompleteIndex = -1;
+let parcelMap;
+let mapBaseLayer;
+let mapSatelliteLayer;
+let mapHybridLayer;
+let mapSelectionSource;
+let mapMarkerSource;
+let mapSelectedItem;
+let mapSearchController;
+let mapClickController;
+
+const mapGeoJson = new GeoJSON();
+const mapBoundaryStyle = [
+  new Style({stroke: new Stroke({color: "rgba(255,255,255,.96)", width: 9})}),
+  new Style({fill: new Fill({color: "rgba(245,29,118,.22)"}), stroke: new Stroke({color: "#f51d76", width: 5})})
+];
+const mapMarkerStyle = new Style({
+  image: new CircleStyle({radius: 9, fill: new Fill({color: "#f51d76"}), stroke: new Stroke({color: "#fff", width: 3})})
+});
 
 function loadHistory() {
   try {
@@ -100,6 +150,64 @@ function renderHistory() {
     });
     elements.historyList.append(button);
   });
+}
+
+function closeHistoryAutocomplete() {
+  autocompleteItems = [];
+  autocompleteIndex = -1;
+  elements.historyAutocomplete.hidden = true;
+  elements.input.setAttribute("aria-expanded", "false");
+  elements.input.removeAttribute("aria-activedescendant");
+}
+
+function setAutocompleteIndex(index) {
+  if (!autocompleteItems.length) return;
+  autocompleteIndex = (index + autocompleteItems.length) % autocompleteItems.length;
+  const options = [...elements.historyAutocompleteList.querySelectorAll("[role='option']")];
+  options.forEach((option, optionIndex) => {
+    const active = optionIndex === autocompleteIndex;
+    option.classList.toggle("active", active);
+    option.setAttribute("aria-selected", String(active));
+    if (active) {
+      elements.input.setAttribute("aria-activedescendant", option.id);
+      option.scrollIntoView({block: "nearest"});
+    }
+  });
+}
+
+function chooseHistoryAutocomplete(item) {
+  elements.input.value = item.parcelAddress || item.primaryAddress || item.roadAddress;
+  closeHistoryAutocomplete();
+  selectParcel(item);
+}
+
+function renderHistoryAutocomplete() {
+  autocompleteItems = filterHistoryItems(recentHistory, elements.input.value);
+  autocompleteIndex = -1;
+  elements.historyAutocompleteList.replaceChildren();
+  if (!autocompleteItems.length) {
+    closeHistoryAutocomplete();
+    return;
+  }
+  elements.historyAutocompleteCount.textContent = `${autocompleteItems.length}개`;
+  autocompleteItems.forEach((item, index) => {
+    const option = createElement("button", "history-autocomplete__item");
+    option.type = "button";
+    option.id = `historyAutocompleteOption${index}`;
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", "false");
+    option.tabIndex = -1;
+    const copy = createElement("span", "history-autocomplete__copy");
+    copy.append(createElement("strong", "", item.parcelAddress || item.primaryAddress || `PNU ${item.pnu}`));
+    copy.append(createElement("small", "", [item.roadAddress, item.buildingName, formatHistoryDate(item.viewedAt)].filter(Boolean).join(" · ")));
+    option.append(createElement("span", "history-autocomplete__icon", "↻"), copy, createElement("span", "history-autocomplete__arrow", "›"));
+    option.addEventListener("pointerdown", (event) => event.preventDefault());
+    option.addEventListener("pointermove", () => setAutocompleteIndex(index));
+    option.addEventListener("click", () => chooseHistoryAutocomplete(item));
+    elements.historyAutocompleteList.append(option);
+  });
+  elements.historyAutocomplete.hidden = false;
+  elements.input.setAttribute("aria-expanded", "true");
 }
 
 function rememberParcel(item) {
@@ -165,13 +273,6 @@ function createElement(tag, className, text) {
   return node;
 }
 
-async function fetchJson(url, signal) {
-  const response = await fetch(url, {headers: {Accept: "application/json"}, signal});
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || "요청을 처리하지 못했습니다.");
-  return payload;
-}
-
 function renderSearchResults(items) {
   elements.resultList.replaceChildren();
   elements.results.hidden = false;
@@ -199,12 +300,13 @@ function renderSearchResults(items) {
 async function searchAddress(query) {
   searchController?.abort();
   searchController = new AbortController();
+  closeHistoryAutocomplete();
   setSearchLoading(true);
   setStatus("주소와 연결된 필지를 찾고 있어요.");
   hideLookupProgress();
   elements.summary.hidden = true;
   try {
-    const payload = await fetchJson(`/api/address-search?q=${encodeURIComponent(query)}`, searchController.signal);
+    const payload = await requestAddressSearch(query, searchController.signal);
     renderSearchResults(payload.items || []);
     setStatus(payload.partial ? "일부 주소 검색 결과만 표시했습니다." : "");
   } catch (error) {
@@ -305,13 +407,148 @@ function renderSummary(data, item) {
   elements.summary.hidden = false;
 }
 
-function vicinityMapUrl(item) {
-  const params = new URLSearchParams({
-    pnu: item.pnu,
-    x: String(item.longitude),
-    y: String(item.latitude)
+function setMapLoading(loading, message = "지도를 불러오고 있어요.") {
+  elements.mapLoading.hidden = !loading;
+  elements.mapLoading.querySelector("span").textContent = message;
+}
+
+function setMapLayer(mode) {
+  const satellite = mode === "satellite";
+  mapBaseLayer?.setVisible(!satellite);
+  mapSatelliteLayer?.setVisible(satellite);
+  mapHybridLayer?.setVisible(satellite);
+  document.querySelectorAll("[data-map-layer]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mapLayer === mode);
   });
-  return `/api/vicinity-map?${params}`;
+}
+
+function ensureParcelMap() {
+  if (parcelMap) return parcelMap;
+  const sourceOptions = {crossOrigin: "anonymous", maxZoom: 19, transition: 0};
+  mapBaseLayer = new TileLayer({source: new XYZ({...sourceOptions, url: "https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png"}), visible: false});
+  mapSatelliteLayer = new TileLayer({source: new XYZ({...sourceOptions, url: "https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg"})});
+  mapHybridLayer = new TileLayer({source: new XYZ({...sourceOptions, url: "https://xdworld.vworld.kr/2d/Hybrid/service/{z}/{x}/{y}.png"})});
+  mapSelectionSource = new VectorSource();
+  mapMarkerSource = new VectorSource();
+  parcelMap = new OLMap({
+    target: elements.interactiveMap,
+    layers: [
+      mapBaseLayer,
+      mapSatelliteLayer,
+      mapHybridLayer,
+      new VectorLayer({source: mapSelectionSource, style: mapBoundaryStyle, zIndex: 18}),
+      new VectorLayer({source: mapMarkerSource, style: mapMarkerStyle, zIndex: 20})
+    ],
+    view: new View({center: fromLonLat([126.978, 37.5665]), zoom: 12, minZoom: 6, maxZoom: 19})
+  });
+  parcelMap.once("rendercomplete", () => setMapLoading(false));
+  parcelMap.on("singleclick", (event) => void chooseMapPoint(toLonLat(event.coordinate)));
+  setMapLayer("satellite");
+  return parcelMap;
+}
+
+function setMapSelectionCopy(item, {loading = false, error = ""} = {}) {
+  const longitude = Number(item?.longitude);
+  const latitude = Number(item?.latitude);
+  elements.mapSelectionTitle.textContent = item?.parcelAddress || item?.primaryAddress || (loading ? "필지를 확인하고 있어요" : "선택한 필지");
+  elements.mapCoordinate.textContent = Number.isFinite(longitude) && Number.isFinite(latitude)
+    ? `좌표 ${longitude.toFixed(6)}, ${latitude.toFixed(6)}`
+    : "";
+  elements.mapSelectionHint.textContent = error || (loading
+    ? "연속지적도에서 이 위치의 필지를 찾고 있습니다."
+    : item ? `PNU ${item.pnu} · 경계는 참고용입니다.` : "검색 결과를 고르거나 지도를 눌러 필지를 선택하세요.");
+  elements.mapSelectParcel.disabled = loading || !item;
+}
+
+function drawMapSelection(item, rawFeature, {fit = true} = {}) {
+  const longitude = Number(item?.longitude);
+  const latitude = Number(item?.latitude);
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return;
+  mapSelectedItem = item;
+  mapSelectionSource.clear();
+  mapMarkerSource.clear();
+  let boundaryFeature = null;
+  if (rawFeature?.geometry) {
+    try {
+      boundaryFeature = mapGeoJson.readFeature(rawFeature, {dataProjection: "EPSG:4326", featureProjection: "EPSG:3857"});
+      mapSelectionSource.addFeature(boundaryFeature);
+    } catch (error) {
+      console.warn("Map parcel geometry could not be rendered", error);
+    }
+  }
+  mapMarkerSource.addFeature(new Feature({geometry: new Point(fromLonLat([longitude, latitude]))}));
+  if (fit && boundaryFeature) {
+    parcelMap.getView().fit(boundaryFeature.getGeometry().getExtent(), {padding: [70, 100, 70, 100], maxZoom: 18, duration: 420});
+  } else {
+    parcelMap.getView().animate({center: fromLonLat([longitude, latitude]), zoom: Math.max(17, parcelMap.getView().getZoom() || 17), duration: 420});
+  }
+  elements.mapDialogAddress.textContent = item.parcelAddress || item.primaryAddress || "선택한 필지";
+  setMapSelectionCopy(item);
+}
+
+async function loadMapCandidate(item) {
+  setMapSelectionCopy(item, {loading: true});
+  elements.mapSearchResults.hidden = true;
+  try {
+    const payload = await requestParcelGeometry(item);
+    drawMapSelection(item, payload.feature);
+  } catch (error) {
+    drawMapSelection(item, null);
+    elements.mapSelectionHint.textContent = "위치는 찾았지만 필지 경계는 표시하지 못했습니다. 이 위치를 선택할 수 있습니다.";
+  }
+}
+
+function renderMapSearchResults(items) {
+  elements.mapSearchResults.replaceChildren();
+  elements.mapSearchResults.hidden = false;
+  if (!items.length) {
+    elements.mapSearchResults.append(createElement("p", "map-search-empty", "일치하는 필지를 찾지 못했습니다."));
+    return;
+  }
+  items.forEach((item) => {
+    const button = createElement("button", "map-search-result");
+    button.type = "button";
+    const type = item.matchTypes.includes("place") ? "건물" : item.matchTypes.includes("road") ? "주소" : "지번";
+    const copy = document.createElement("div");
+    copy.append(createElement("strong", "", item.parcelAddress || item.primaryAddress));
+    copy.append(createElement("small", "", [item.roadAddress, item.buildingName].filter(Boolean).join(" · ") || `PNU ${item.pnu}`));
+    button.append(createElement("span", "", type), copy, createElement("i", "", "›"));
+    button.addEventListener("click", () => void loadMapCandidate(item));
+    elements.mapSearchResults.append(button);
+  });
+}
+
+async function searchInMap(query) {
+  mapSearchController?.abort();
+  mapSearchController = new AbortController();
+  elements.mapSearchButton.disabled = true;
+  elements.mapSearchButton.textContent = "검색 중";
+  try {
+    const payload = await requestAddressSearch(query, mapSearchController.signal);
+    renderMapSearchResults(payload.items || []);
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      elements.mapSearchResults.replaceChildren(createElement("p", "map-search-empty", error.message));
+      elements.mapSearchResults.hidden = false;
+    }
+  } finally {
+    elements.mapSearchButton.disabled = false;
+    elements.mapSearchButton.textContent = "검색";
+  }
+}
+
+async function chooseMapPoint([longitude, latitude]) {
+  mapClickController?.abort();
+  mapClickController = new AbortController();
+  mapSelectedItem = null;
+  setMapSelectionCopy({longitude, latitude}, {loading: true});
+  elements.mapSearchResults.hidden = true;
+  try {
+    const payload = await requestParcelAtPoint(longitude, latitude, mapClickController.signal);
+    drawMapSelection(payload.item, payload.feature, {fit: false});
+  } catch (error) {
+    if (error.name !== "AbortError") setMapSelectionCopy({longitude, latitude}, {error: error.message});
+  }
 }
 
 function openMap() {
@@ -321,27 +558,24 @@ function openMap() {
     setStatus("선택한 필지의 지도 좌표가 없습니다.", "error");
     return;
   }
-  elements.mapDialogTitle.textContent = "선택한 필지 주변";
-  elements.mapDialogAddress.textContent = selectedItem.parcelAddress || selectedItem.primaryAddress;
-  elements.mapCoordinate.textContent = `좌표 ${longitude.toFixed(6)}, ${latitude.toFixed(6)}`;
-  elements.mapImage.alt = `${selectedItem.parcelAddress || selectedItem.primaryAddress} 주변 항공·도로 혼합 지도`;
-  elements.mapImage.hidden = true;
+  elements.mapDialogTitle.textContent = "지도에서 필지를 찾아보세요";
+  elements.mapDialogAddress.textContent = "주소·건물명 검색 또는 지도 클릭으로 선택";
   elements.mapError.hidden = true;
-  elements.mapLoading.hidden = false;
-  elements.mapImage.onload = () => {
-    elements.mapLoading.hidden = true;
-    elements.mapImage.hidden = false;
-  };
-  elements.mapImage.onerror = () => {
-    elements.mapLoading.hidden = true;
-    elements.mapImage.hidden = true;
-    elements.mapError.hidden = false;
-  };
-  elements.mapImage.src = vicinityMapUrl(selectedItem);
+  elements.mapSearchResults.hidden = true;
+  elements.mapSearchInput.value = "";
+  setMapLoading(!parcelMap);
   elements.mapDialog.showModal();
+  ensureParcelMap();
+  window.setTimeout(() => {
+    parcelMap.updateSize();
+    void loadMapCandidate(selectedItem);
+  }, 0);
 }
 
 function closeMap() {
+  mapSearchController?.abort();
+  mapClickController?.abort();
+  elements.mapSearchResults.hidden = true;
   if (elements.mapDialog.open) elements.mapDialog.close();
 }
 
@@ -368,7 +602,7 @@ async function selectParcel(item) {
   setStatus("토지이음에서 토지이용계획을 확인하고 있어요.");
   elements.officialLink.href = fallbackOfficialUrl(item.pnu);
   try {
-    const payload = await fetchJson(`/api/land-use?pnu=${encodeURIComponent(item.pnu)}`, detailController.signal);
+    const payload = await requestLandUse(item.pnu, detailController.signal);
     selectedData = payload.data;
     renderSummary(payload.data, item);
     hideLookupProgress(true);
@@ -407,6 +641,17 @@ elements.downloadReport.addEventListener("click", async () => {
   updateExportProgress({percent: 5, message: "조회 내용을 정리하는 중입니다."});
   try {
     const model = buildReportModel(selectedData, selectedItem);
+    if (usesDirectBrowserApi() && model.vicinity) {
+      model.vicinity.imageUrl = "";
+      model.vicinity.useTileMap = true;
+      try {
+        const geometry = await requestParcelGeometry(selectedItem);
+        model.vicinity.geometry = geometry.feature?.geometry || null;
+        model.vicinity.geometryUrl = "";
+      } catch (error) {
+        console.warn("Parcel geometry unavailable for report", error);
+      }
+    }
     const result = await window.TojiIyongReport.generatePdf(model, updateExportProgress);
     if (reportObjectUrl) URL.revokeObjectURL(reportObjectUrl);
     reportObjectUrl = URL.createObjectURL(result.blob);
@@ -447,9 +692,29 @@ elements.mapDialog.addEventListener("click", (event) => {
   if (event.target === elements.mapDialog) closeMap();
 });
 elements.mapDialog.addEventListener("close", () => {
-  elements.mapImage.onload = null;
-  elements.mapImage.onerror = null;
-  elements.mapImage.removeAttribute("src");
+  mapSearchController?.abort();
+  mapClickController?.abort();
+  elements.mapSearchResults.hidden = true;
+});
+elements.mapSearchForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const query = elements.mapSearchInput.value.replace(/\s+/g, " ").trim();
+  if (query.length < 2) {
+    elements.mapSelectionHint.textContent = "주소·지번·건물명을 두 글자 이상 입력해 주세요.";
+    elements.mapSearchInput.focus();
+    return;
+  }
+  void searchInMap(query);
+});
+elements.mapSelectParcel.addEventListener("click", () => {
+  if (!mapSelectedItem) return;
+  const item = mapSelectedItem;
+  elements.input.value = item.parcelAddress || item.primaryAddress || item.roadAddress;
+  closeMap();
+  void selectParcel(item);
+});
+document.querySelectorAll("[data-map-layer]").forEach((button) => {
+  button.addEventListener("click", () => setMapLayer(button.dataset.mapLayer));
 });
 
 elements.form.addEventListener("submit", (event) => {
@@ -461,6 +726,31 @@ elements.form.addEventListener("submit", (event) => {
     return;
   }
   searchAddress(query);
+});
+
+elements.input.addEventListener("focus", renderHistoryAutocomplete);
+elements.input.addEventListener("input", renderHistoryAutocomplete);
+elements.input.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (elements.historyAutocomplete.hidden) renderHistoryAutocomplete();
+    if (!autocompleteItems.length) return;
+    event.preventDefault();
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    setAutocompleteIndex(autocompleteIndex < 0 ? (direction > 0 ? 0 : autocompleteItems.length - 1) : autocompleteIndex + direction);
+    return;
+  }
+  if (event.key === "Enter" && !elements.historyAutocomplete.hidden && autocompleteIndex >= 0) {
+    event.preventDefault();
+    chooseHistoryAutocomplete(autocompleteItems[autocompleteIndex]);
+    return;
+  }
+  if (event.key === "Escape") {
+    closeHistoryAutocomplete();
+  }
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!elements.form.contains(event.target)) closeHistoryAutocomplete();
 });
 
 elements.searchAgain.addEventListener("click", () => {
@@ -486,6 +776,7 @@ elements.clearHistory.addEventListener("click", () => {
     // 저장소 접근이 차단된 경우 현재 화면에서만 제거한다.
   }
   renderHistory();
+  closeHistoryAutocomplete();
   setStatus("최근 조회 기록을 삭제했습니다.");
 });
 
