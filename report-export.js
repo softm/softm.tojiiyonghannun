@@ -33,15 +33,36 @@
     return `<table class="data-table"><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${section.rows.map((row) => `<tr>${row.map((value) => `<td>${escapeHtml(safeValue(value))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   }
 
-  function pageHeaderHtml(model, compact = false) {
+  function pageHeaderHtml(model, {title = model.title, compact = false} = {}) {
     return `<p class="download-report__brand">토지이용한눈 · Land Use at a Glance</p>
-      <h1${compact ? ' class="compact"' : ""}>${escapeHtml(compact ? "주요 행위제한 및 근거 법령" : model.title)}</h1>
+      <h1${compact ? ' class="compact"' : ""}>${escapeHtml(title)}</h1>
       <p class="download-report__address">${escapeHtml(model.address)}</p>
       <div class="download-report__meta">
         <span>도로명 ${escapeHtml(safeValue(model.road))}</span>
         <span>작성일 ${escapeHtml(model.generatedAt)}</span>
         <span>PNU ${escapeHtml(safeValue(model.pnu))}</span>
       </div>`;
+  }
+
+  function vicinityPageHtml(model) {
+    if (!model.vicinity) return "";
+    const location = `${Number(model.vicinity.longitude).toFixed(6)}, ${Number(model.vicinity.latitude).toFixed(6)}`;
+    const image = model.vicinity.imageDataUrl
+      ? `<img src="${escapeHtml(model.vicinity.imageDataUrl)}" alt="선택한 필지 부근 항공 지도">`
+      : `<div class="download-report__map-error">필지 부근 이미지를 불러오지 못했습니다.<br>보고서의 주소와 토지이음 원문을 함께 확인해 주세요.</div>`;
+    return `<article class="download-report" aria-hidden="true">
+      ${pageHeaderHtml(model, {title: "필지 부근 위치", compact: true})}
+      <section class="download-report__vicinity">
+        <h2>필지 부근 위치</h2>
+        <div class="download-report__map">${image}</div>
+        <div class="download-report__map-caption">
+          <strong><i></i> 선택 필지 검색 위치</strong>
+          <span>좌표 ${escapeHtml(location)} · VWorld 항공·도로 혼합 지도</span>
+        </div>
+        <p>주소 검색 결과의 중심점을 기준으로 주변을 표시한 참고 이미지입니다. 붉은 표식은 검색 위치이며 정확한 필지 경계를 뜻하지 않습니다.</p>
+      </section>
+      <footer class="download-report__footer"><span>지도 출처: 공간정보 오픈플랫폼 VWorld</span><span>PNU ${escapeHtml(model.pnu)}</span></footer>
+    </article>`;
   }
 
   function reportPagesHtml(model) {
@@ -61,12 +82,15 @@
       </article>`
     ];
 
+    const vicinityPage = vicinityPageHtml(model);
+    if (vicinityPage) pages.push(vicinityPage);
+
     if (restrictionSection.rows.length) {
       chunks.forEach((rows, index) => {
         const section = {...restrictionSection, rows};
         const isLast = index === chunks.length - 1;
         pages.push(`<article class="download-report" aria-hidden="true">
-          ${pageHeaderHtml(model, true)}
+          ${pageHeaderHtml(model, {title: "주요 행위제한 및 근거 법령", compact: true})}
           <section class="download-report__continuation"><h2>${escapeHtml(restrictionSection.title)} ${chunks.length > 1 ? `(${index + 1}/${chunks.length})` : ""}</h2>${sectionHtml(section)}</section>
           ${isLast ? `<p class="download-report__notice">${escapeHtml(model.notice)}</p><footer class="download-report__footer"><span>${escapeHtml(model.source)}</span><span>토지이용한눈 자동 생성 보고서</span></footer>` : ""}
         </article>`);
@@ -89,12 +113,50 @@
     callback?.({percent, message});
   }
 
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(reader.result), {once: true});
+      reader.addEventListener("error", () => reject(new Error("필지 부근 이미지를 읽지 못했습니다.")), {once: true});
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function loadVicinityImage(model, onProgress) {
+    if (!model.vicinity?.imageUrl) return model;
+    notify(onProgress, 14, "필지 부근 항공 지도를 불러오고 있어요.");
+    try {
+      const response = await fetch(model.vicinity.imageUrl, {headers: {Accept: "image/png"}});
+      if (!response.ok) throw new Error(`필지 부근 이미지 HTTP ${response.status}`);
+      const blob = await response.blob();
+      if (blob.type !== "image/png") throw new Error("필지 부근 이미지 형식이 올바르지 않습니다.");
+      return {...model, vicinity: {...model.vicinity, imageDataUrl: await blobToDataUrl(blob)}};
+    } catch (error) {
+      console.warn("Vicinity image unavailable", error);
+      return {...model, vicinity: {...model.vicinity, imageError: true}};
+    }
+  }
+
+  async function waitForImages(reports) {
+    const images = reports.flatMap((report) => [...report.querySelectorAll("img")]);
+    await Promise.all(images.map(async (image) => {
+      if (!image.complete) {
+        await new Promise((resolve) => {
+          image.addEventListener("load", resolve, {once: true});
+          image.addEventListener("error", resolve, {once: true});
+        });
+      }
+      if (typeof image.decode === "function") await image.decode().catch(() => {});
+    }));
+  }
+
   async function captureReports(model, onProgress) {
     if (typeof window.html2canvas !== "function") throw new Error("PDF 화면 생성 모듈을 불러오지 못했습니다.");
     const reports = createReportElements(model);
     try {
       notify(onProgress, 20, "조회 내용을 보고서 형식으로 정리하고 있어요.");
       if (document.fonts?.ready) await document.fonts.ready;
+      await waitForImages(reports);
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const canvases = [];
       for (let index = 0; index < reports.length; index += 1) {
@@ -114,10 +176,11 @@
     }
   }
 
-  async function exportPdf(model, onProgress) {
+  async function generatePdf(model, onProgress) {
     if (!window.jspdf?.jsPDF) throw new Error("PDF 파일 생성 모듈을 불러오지 못했습니다.");
     notify(onProgress, 8, "보고서 생성 준비 중입니다.");
-    const canvases = await captureReports(model, onProgress);
+    const hydratedModel = await loadVicinityImage(model, onProgress);
+    const canvases = await captureReports(hydratedModel, onProgress);
     notify(onProgress, 68, "A4 페이지로 정리하고 있어요.");
 
     const {jsPDF} = window.jspdf;
@@ -142,10 +205,22 @@
       notify(onProgress, 70 + Math.round(((pageIndex + 1) / canvases.length) * 22), `${pageIndex + 1}/${canvases.length} 페이지를 만들고 있어요.`);
     }
 
-    notify(onProgress, 96, "PDF 파일을 저장하고 있어요.");
-    pdf.save(fileName(model));
-    notify(onProgress, 100, "보고서 다운로드를 완료했습니다.");
+    notify(onProgress, 96, "보고서 뷰어를 준비하고 있어요.");
+    const result = {blob: pdf.output("blob"), fileName: fileName(model)};
+    notify(onProgress, 100, "보고서 미리보기가 준비되었습니다.");
+    return result;
   }
 
-  window.TojiIyongReport = {exportPdf};
+  async function exportPdf(model, onProgress) {
+    const result = await generatePdf(model, onProgress);
+    const url = URL.createObjectURL(result.blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.fileName;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return result;
+  }
+
+  window.TojiIyongReport = {generatePdf, exportPdf};
 })();

@@ -1,4 +1,7 @@
 import {buildReportModel} from "./report-model.js";
+import {addHistoryItem, parseHistory} from "./history-model.js";
+
+const HISTORY_STORAGE_KEY = "tojiiyonghannun.recent-parcels.v1";
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -10,6 +13,9 @@ const elements = {
   results: $("#searchResults"),
   resultList: $("#resultList"),
   resultCount: $("#resultCount"),
+  recentHistory: $("#recentHistory"),
+  historyList: $("#historyList"),
+  clearHistory: $("#clearHistory"),
   lookupProgress: $("#lookupProgress"),
   lookupProgressAddress: $("#lookupProgressAddress"),
   lookupProgressValue: $("#lookupProgressValue"),
@@ -22,7 +28,21 @@ const elements = {
   otherLaws: $("#otherLaws"),
   restrictions: $("#restrictions"),
   officialLink: $("#officialLink"),
+  viewMap: $("#viewMap"),
+  mapDialog: $("#mapDialog"),
+  mapDialogTitle: $("#mapDialogTitle"),
+  mapDialogAddress: $("#mapDialogAddress"),
+  mapCoordinate: $("#mapCoordinate"),
+  mapImage: $("#mapImage"),
+  mapLoading: $("#mapLoading"),
+  mapError: $("#mapError"),
+  closeMap: $("#closeMap"),
   downloadReport: $("#downloadReport"),
+  reportDialog: $("#reportDialog"),
+  reportDialogAddress: $("#reportDialogAddress"),
+  reportFrame: $("#reportFrame"),
+  reportDownload: $("#reportDownload"),
+  closeReport: $("#closeReport"),
   exportProgress: $("#exportProgress"),
   exportProgressMessage: $("#exportProgressMessage"),
   exportProgressValue: $("#exportProgressValue"),
@@ -36,6 +56,57 @@ let selectedItem;
 let selectedData;
 let lookupProgressTimer;
 let lookupPercent = 12;
+let recentHistory = loadHistory();
+let reportObjectUrl = "";
+
+function loadHistory() {
+  try {
+    return parseHistory(window.localStorage.getItem(HISTORY_STORAGE_KEY));
+  } catch {
+    return [];
+  }
+}
+
+function persistHistory() {
+  try {
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(recentHistory));
+  } catch {
+    // 브라우저 저장소가 차단되어도 필지 조회는 계속 동작한다.
+  }
+}
+
+function formatHistoryDate(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "최근 조회";
+  return new Intl.DateTimeFormat("ko-KR", {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"}).format(date);
+}
+
+function renderHistory() {
+  elements.historyList.replaceChildren();
+  elements.recentHistory.hidden = recentHistory.length === 0;
+  recentHistory.forEach((item) => {
+    const button = createElement("button", "recent-history__item");
+    button.type = "button";
+    button.setAttribute("aria-label", `${item.parcelAddress || item.primaryAddress} 다시 조회`);
+    const icon = createElement("span", "recent-history__icon", "↻");
+    icon.setAttribute("aria-hidden", "true");
+    const copy = createElement("span", "recent-history__copy");
+    copy.append(createElement("strong", "", item.parcelAddress || item.primaryAddress || `PNU ${item.pnu}`));
+    copy.append(createElement("small", "", [item.roadAddress, formatHistoryDate(item.viewedAt)].filter(Boolean).join(" · ")));
+    button.append(icon, copy, createElement("span", "recent-history__arrow", "›"));
+    button.addEventListener("click", () => {
+      elements.input.value = item.parcelAddress || item.primaryAddress;
+      selectParcel(item);
+    });
+    elements.historyList.append(button);
+  });
+}
+
+function rememberParcel(item) {
+  recentHistory = addHistoryItem(recentHistory, item);
+  persistHistory();
+  renderHistory();
+}
 
 function setStatus(message = "", type = "") {
   elements.status.textContent = message;
@@ -114,7 +185,7 @@ function renderSearchResults(items) {
     const button = createElement("button", "result-item");
     button.type = "button";
     button.dataset.pnu = item.pnu;
-    const type = item.matchTypes.includes("road") && item.matchTypes.includes("parcel") ? "주소" : item.matchTypes.includes("road") ? "도로" : "지번";
+    const type = item.matchTypes.includes("place") ? "건물" : item.matchTypes.includes("road") && item.matchTypes.includes("parcel") ? "주소" : item.matchTypes.includes("road") ? "도로" : "지번";
     button.append(createElement("span", "result-type", type));
     const copy = createElement("span", "result-copy");
     copy.append(createElement("strong", "", item.parcelAddress || item.primaryAddress));
@@ -230,7 +301,48 @@ function renderSummary(data, item) {
   renderZoneList(elements.otherLaws, [...(data.otherLaws || []), ...(data.decree || [])]);
   renderRestrictions(data.restrictions);
   elements.officialLink.href = data.officialUrl;
+  elements.viewMap.hidden = !(Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)));
   elements.summary.hidden = false;
+}
+
+function vicinityMapUrl(item) {
+  const params = new URLSearchParams({
+    pnu: item.pnu,
+    x: String(item.longitude),
+    y: String(item.latitude)
+  });
+  return `/api/vicinity-map?${params}`;
+}
+
+function openMap() {
+  const longitude = Number(selectedItem?.longitude);
+  const latitude = Number(selectedItem?.latitude);
+  if (!selectedItem || !Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+    setStatus("선택한 필지의 지도 좌표가 없습니다.", "error");
+    return;
+  }
+  elements.mapDialogTitle.textContent = "선택한 필지 주변";
+  elements.mapDialogAddress.textContent = selectedItem.parcelAddress || selectedItem.primaryAddress;
+  elements.mapCoordinate.textContent = `좌표 ${longitude.toFixed(6)}, ${latitude.toFixed(6)}`;
+  elements.mapImage.alt = `${selectedItem.parcelAddress || selectedItem.primaryAddress} 주변 항공·도로 혼합 지도`;
+  elements.mapImage.hidden = true;
+  elements.mapError.hidden = true;
+  elements.mapLoading.hidden = false;
+  elements.mapImage.onload = () => {
+    elements.mapLoading.hidden = true;
+    elements.mapImage.hidden = false;
+  };
+  elements.mapImage.onerror = () => {
+    elements.mapLoading.hidden = true;
+    elements.mapImage.hidden = true;
+    elements.mapError.hidden = false;
+  };
+  elements.mapImage.src = vicinityMapUrl(selectedItem);
+  elements.mapDialog.showModal();
+}
+
+function closeMap() {
+  if (elements.mapDialog.open) elements.mapDialog.close();
 }
 
 function fallbackOfficialUrl(pnu) {
@@ -249,6 +361,7 @@ async function selectParcel(item) {
   detailController = new AbortController();
   selectedItem = item;
   selectedData = null;
+  rememberParcel(item);
   elements.results.hidden = true;
   elements.summary.hidden = true;
   showLookupProgress(item);
@@ -285,7 +398,7 @@ elements.downloadReport.addEventListener("click", async () => {
     setStatus("보고서에 담을 조회 결과가 없습니다.", "error");
     return;
   }
-  if (!window.TojiIyongReport?.exportPdf) {
+  if (!window.TojiIyongReport?.generatePdf) {
     setStatus("PDF 생성 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.", "error");
     return;
   }
@@ -294,9 +407,16 @@ elements.downloadReport.addEventListener("click", async () => {
   updateExportProgress({percent: 5, message: "조회 내용을 정리하는 중입니다."});
   try {
     const model = buildReportModel(selectedData, selectedItem);
-    await window.TojiIyongReport.exportPdf(model, updateExportProgress);
-    setStatus("PDF 보고서 다운로드를 완료했습니다.");
-    window.setTimeout(() => { elements.exportProgress.hidden = true; }, 500);
+    const result = await window.TojiIyongReport.generatePdf(model, updateExportProgress);
+    if (reportObjectUrl) URL.revokeObjectURL(reportObjectUrl);
+    reportObjectUrl = URL.createObjectURL(result.blob);
+    elements.reportFrame.src = reportObjectUrl;
+    elements.reportDownload.href = reportObjectUrl;
+    elements.reportDownload.download = result.fileName;
+    elements.reportDialogAddress.textContent = model.address;
+    elements.exportProgress.hidden = true;
+    elements.reportDialog.showModal();
+    setStatus("PDF 보고서 미리보기를 열었습니다.");
   } catch (error) {
     console.error("PDF report export failed", error);
     elements.exportProgress.hidden = true;
@@ -304,6 +424,32 @@ elements.downloadReport.addEventListener("click", async () => {
   } finally {
     elements.downloadReport.disabled = false;
   }
+});
+
+function closeReportViewer() {
+  if (elements.reportDialog.open) elements.reportDialog.close();
+}
+
+elements.closeReport.addEventListener("click", closeReportViewer);
+elements.reportDialog.addEventListener("click", (event) => {
+  if (event.target === elements.reportDialog) closeReportViewer();
+});
+elements.reportDialog.addEventListener("close", () => {
+  elements.reportFrame.removeAttribute("src");
+  elements.reportDownload.removeAttribute("href");
+  if (reportObjectUrl) URL.revokeObjectURL(reportObjectUrl);
+  reportObjectUrl = "";
+});
+
+elements.viewMap.addEventListener("click", openMap);
+elements.closeMap.addEventListener("click", closeMap);
+elements.mapDialog.addEventListener("click", (event) => {
+  if (event.target === elements.mapDialog) closeMap();
+});
+elements.mapDialog.addEventListener("close", () => {
+  elements.mapImage.onload = null;
+  elements.mapImage.onerror = null;
+  elements.mapImage.removeAttribute("src");
 });
 
 elements.form.addEventListener("submit", (event) => {
@@ -319,6 +465,8 @@ elements.form.addEventListener("submit", (event) => {
 
 elements.searchAgain.addEventListener("click", () => {
   detailController?.abort();
+  closeMap();
+  closeReportViewer();
   selectedItem = null;
   selectedData = null;
   hideLookupProgress();
@@ -329,3 +477,16 @@ elements.searchAgain.addEventListener("click", () => {
   elements.input.focus();
   window.scrollTo({top: elements.form.offsetTop - 40, behavior: "smooth"});
 });
+
+elements.clearHistory.addEventListener("click", () => {
+  recentHistory = [];
+  try {
+    window.localStorage.removeItem(HISTORY_STORAGE_KEY);
+  } catch {
+    // 저장소 접근이 차단된 경우 현재 화면에서만 제거한다.
+  }
+  renderHistory();
+  setStatus("최근 조회 기록을 삭제했습니다.");
+});
+
+renderHistory();

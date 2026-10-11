@@ -26,6 +26,10 @@ function formatPrice(amount, year) {
 
 export function buildReportModel(data, item, generatedAt = new Date()) {
   const address = clean(data?.address || item?.parcelAddress || item?.primaryAddress || "선택한 필지");
+  const pnu = clean(item?.pnu || data?.pnu);
+  const longitude = Number(item?.longitude);
+  const latitude = Number(item?.latitude);
+  const hasVicinity = Number.isFinite(longitude) && Number.isFinite(latitude);
   const nationalPlan = data?.nationalPlan || [];
   const otherLaws = [...(data?.otherLaws || []), ...(data?.decree || [])];
   const restrictions = (data?.restrictions || []).flatMap((group) => (group.rules || []).map((rule) => [
@@ -37,9 +41,14 @@ export function buildReportModel(data, item, generatedAt = new Date()) {
     title: "토지이용계획 열람 요약 보고서",
     address,
     road: clean(item?.roadAddress),
-    pnu: clean(item?.pnu || data?.pnu),
+    pnu,
     generatedAt: formatGeneratedAt(generatedAt),
     fileBase: address,
+    vicinity: hasVicinity ? {
+      longitude,
+      latitude,
+      imageUrl: `/api/vicinity-map?pnu=${encodeURIComponent(pnu)}&x=${encodeURIComponent(longitude)}&y=${encodeURIComponent(latitude)}`
+    } : null,
     sections: [
       {
         title: "필지 기본정보",
@@ -47,7 +56,7 @@ export function buildReportModel(data, item, generatedAt = new Date()) {
         rows: [
           ["소재지", address],
           ["도로명주소", valueOrDash(item?.roadAddress)],
-          ["필지고유번호(PNU)", valueOrDash(item?.pnu || data?.pnu)],
+          ["필지고유번호(PNU)", valueOrDash(pnu)],
           ["지목", valueOrDash(data?.landCategory)],
           ["면적", valueOrDash(data?.area)],
           ["개별공시지가", formatPrice(data?.price, data?.priceYear)]

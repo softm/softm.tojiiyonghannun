@@ -39,6 +39,17 @@
           <p class="search-hint">도로명, 지번, 산번지 또는 건물명으로 검색할 수 있어요.</p>
         </form>
 
+        <section class="recent-history" id="recentHistory" aria-labelledby="recentHistoryTitle" hidden>
+          <div class="recent-history__head">
+            <div>
+              <span>이 브라우저에만 저장</span>
+              <h2 id="recentHistoryTitle">최근 조회한 필지</h2>
+            </div>
+            <button id="clearHistory" type="button">전체 삭제</button>
+          </div>
+          <div class="recent-history__list" id="historyList"></div>
+        </section>
+
         <div class="status" id="status" role="status" aria-live="polite"></div>
         <section class="search-results" id="searchResults" aria-labelledby="searchResultsTitle" hidden>
           <div class="section-heading">
@@ -100,16 +111,20 @@
           <a class="primary-action" id="officialLink" href="https://www.eum.go.kr/" target="_blank" rel="noopener noreferrer">
             토지이음에서 원문 보기 <span aria-hidden="true">↗</span>
           </a>
+          <button class="map-action" id="viewMap" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+            지도에서 보기
+          </button>
           <button class="download-action" id="downloadReport" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v3h14v-3"/></svg>
-            PDF 보고서 다운로드
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
+            PDF 보고서 보기
           </button>
           <button class="secondary-action" id="searchAgain" type="button">다른 주소 검색</button>
         </div>
         <p class="legal-notice">이 화면은 공개된 정보를 이해하기 쉽게 정리한 참고자료이며 공식 확인서가 아닙니다. 인허가·거래 등 법적 판단이 필요한 경우 토지이음 원문과 관계기관을 통해 다시 확인하세요.</p>
       </section>
 
-      <section class="process" aria-label="이용 방법">
+      <section class="process" id="how" aria-label="이용 방법">
         <article><span>1</span><div><strong>주소 검색</strong><p>도로명이나 지번을 입력합니다.</p></div></article>
         <i aria-hidden="true"></i>
         <article><span>2</span><div><strong>필지 선택</strong><p>정확한 지번을 확인합니다.</p></div></article>
@@ -121,6 +136,7 @@
     <footer>
       <strong>토지이용한눈</strong>
       <p>공간정보 오픈플랫폼 VWorld · 토지이음 공개정보를 활용합니다.</p>
+      <a href="/privacy.html">개인정보처리방침</a>
     </footer>
 
     <div class="export-progress" id="exportProgress" role="dialog" aria-modal="true" aria-labelledby="exportProgressTitle" hidden>
@@ -137,6 +153,48 @@
         <div class="progress-track"><span id="exportProgressBar"></span></div>
       </div>
     </div>
+
+    <dialog class="map-dialog" id="mapDialog" aria-labelledby="mapDialogTitle">
+      <div class="map-dialog__panel">
+        <header class="map-dialog__head">
+          <div>
+            <small>VWorld 항공·도로 혼합 지도</small>
+            <h2 id="mapDialogTitle">선택한 필지 주변</h2>
+            <p id="mapDialogAddress"></p>
+          </div>
+          <button class="map-dialog__close" id="closeMap" type="button" aria-label="지도 닫기">×</button>
+        </header>
+        <div class="map-dialog__canvas" id="mapCanvas">
+          <div class="map-dialog__loading" id="mapLoading" role="status">
+            <i aria-hidden="true"></i>
+            <span>지도를 불러오고 있어요.</span>
+          </div>
+          <img id="mapImage" alt="" hidden />
+          <p class="map-dialog__error" id="mapError" role="alert" hidden>지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+        </div>
+        <div class="map-dialog__foot">
+          <p><b><i></i> 선택 필지 검색 위치</b><span id="mapCoordinate"></span></p>
+          <small>붉은 표식은 주소 검색 위치이며 정확한 필지 경계를 뜻하지 않습니다. 지도 출처: 공간정보 오픈플랫폼 VWorld</small>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="report-dialog" id="reportDialog" aria-labelledby="reportDialogTitle">
+      <div class="report-dialog__panel">
+        <header class="report-dialog__head">
+          <div>
+            <small>PDF REPORT VIEWER</small>
+            <h2 id="reportDialogTitle">토지이용계획 열람 요약 보고서</h2>
+            <p id="reportDialogAddress"></p>
+          </div>
+          <div class="report-dialog__actions">
+            <a id="reportDownload" href="#" download>PDF 다운로드</a>
+            <button id="closeReport" type="button" aria-label="보고서 뷰어 닫기">×</button>
+          </div>
+        </header>
+        <iframe id="reportFrame" title="토지이용계획 PDF 보고서 미리보기"></iframe>
+      </div>
+    </dialog>
 
     <script src="./node_modules/html2canvas/dist/html2canvas.min.js"></script>
     <script src="./node_modules/jspdf/dist/jspdf.umd.min.js"></script>
