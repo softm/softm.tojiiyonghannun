@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {addHistoryItem, filterHistoryItems, parseHistory} from "../history-model.js";
+import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "../history-model.js";
 
 const parcel = (pnu, address) => ({
   pnu,
@@ -47,4 +47,11 @@ test("최근 조회 자동완성은 주소, 도로명, 건물명과 PNU를 검�
   assert.equal(filterHistoryItems(history, "한신더휴")[0].parcelAddress.includes("옥길동"), true);
   assert.equal(filterHistoryItems(history, "2714010200105510023")[0].parcelAddress.includes("신천동"), true);
   assert.equal(filterHistoryItems(history, "없는 주소").length, 0);
+});
+
+test("최근 조회 목록은 검색 전 기본 화면에서만 표시한다", () => {
+  const history = [parcel("4119410600107420001", "경기도 부천시 소사구 옥길동 742-1")];
+  assert.equal(shouldShowRecentHistory(history, "idle"), true);
+  assert.equal(shouldShowRecentHistory(history, "active"), false);
+  assert.equal(shouldShowRecentHistory([], "idle"), false);
 });
