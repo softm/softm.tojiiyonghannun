@@ -252,7 +252,9 @@ h1 em { color: var(--green); font-style: normal; }
 .report-dialog__actions a:hover, .report-dialog__actions a:focus-visible { background: var(--green-dark); outline: none; }
 .report-dialog__actions button { width: 40px; height: 40px; border: 1px solid #d6e1db; border-radius: 11px; background: #fff; color: var(--ink-soft); font-size: 24px; line-height: 1; cursor: pointer; }
 .report-dialog__actions button:hover, .report-dialog__actions button:focus-visible { border-color: var(--green); outline: none; color: var(--green); }
-.report-dialog iframe { width: 100%; height: 100%; border: 0; background: #e8ecea; }
+.report-preview { min-height: 0; overflow: auto; padding: 24px; background: #e8ecea; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.report-preview__pages { display: grid; justify-items: center; gap: 22px; }
+.report-preview .download-report { position: relative; z-index: auto; top: auto; left: auto; width: min(794px, 100%); padding: 54px 58px; border-radius: 8px; box-shadow: 0 8px 30px rgba(21, 52, 44, .12); }
 
 .download-report { position: fixed; z-index: -10; top: 0; left: -12000px; width: 794px; padding: 54px 58px; background: #fff; color: #17342e; font-family: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif; }
 .download-report__brand { margin: 0 0 12px; color: #176b54; font-size: 14px; font-weight: 800; letter-spacing: .06em; }
@@ -341,6 +343,20 @@ footer a:hover, footer a:focus-visible { text-decoration: underline; }
   .report-dialog__head p { max-width: 48vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .report-dialog__actions a { min-height: 38px; padding: 0 11px; font-size: 11px; }
   .report-dialog__actions button { width: 38px; height: 38px; }
+  .report-preview { padding: 10px; }
+  .report-preview__pages { gap: 12px; }
+  .report-preview .download-report { padding: 24px 16px; border-radius: 10px; }
+  .report-preview .download-report__brand { font-size: 10px; }
+  .report-preview .download-report h1 { font-size: 24px; }
+  .report-preview .download-report h1.compact { font-size: 20px; }
+  .report-preview .download-report__address { margin-top: 10px; font-size: 16px; }
+  .report-preview .download-report__meta { gap: 5px 10px; font-size: 9px; }
+  .report-preview .download-report section { margin-top: 20px; }
+  .report-preview .download-report section h2 { font-size: 15px; }
+  .report-preview .download-report table { font-size: 9px; }
+  .report-preview .download-report th, .report-preview .download-report td { padding: 7px 6px; }
+  .report-preview .download-report__map-caption { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .report-preview .download-report__footer { align-items: flex-start; flex-direction: column; gap: 5px; }
   .process { grid-template-columns: 1fr; gap: 14px; padding: 0 10px; }
   .process i { width: 1px; height: 14px; margin-left: 17px; }
   footer { flex-direction: column; padding-bottom: max(25px, env(safe-area-inset-bottom)); }

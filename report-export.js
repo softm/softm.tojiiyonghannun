@@ -1,4 +1,4 @@
-import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js?v=20261012-4";
+import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js?v=20261012-6";
 
 (function () {
   "use strict";
@@ -99,6 +99,12 @@ import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js?v=20261012
       });
     }
     return pages;
+  }
+
+  function reportPreviewHtml(model) {
+    return `<div class="report-preview__pages">${reportPagesHtml(model)
+      .map((html) => html.replace(' class="download-report" aria-hidden="true"', ' class="download-report"'))
+      .join("")}</div>`;
   }
 
   function createReportElements(model) {
@@ -238,7 +244,7 @@ import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js?v=20261012
     }
 
     notify(onProgress, 96, "보고서 뷰어를 준비하고 있어요.");
-    const result = {blob: pdf.output("blob"), fileName: fileName(model)};
+    const result = {blob: pdf.output("blob"), fileName: fileName(model), previewHtml: reportPreviewHtml(hydratedModel)};
     notify(onProgress, 100, "보고서 미리보기가 준비되었습니다.");
     return result;
   }

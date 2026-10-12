@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261012-5" />
+    <link rel="stylesheet" href="./styles.css?v=20261012-6" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -227,14 +227,14 @@
             <button id="closeReport" type="button" aria-label="보고서 뷰어 닫기">×</button>
           </div>
         </header>
-        <iframe id="reportFrame" title="토지이용계획 PDF 보고서 미리보기"></iframe>
+        <div class="report-preview" id="reportPreview" role="document" aria-label="토지이용계획 보고서 미리보기"></div>
       </div>
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
-    <script type="module" src="./report-export.js?v=20261012-4"></script>
-    <script type="module" src="./app.js?v=20261012-4"></script>
+    <script type="module" src="./report-export.js?v=20261012-6"></script>
+    <script type="module" src="./app.js?v=20261012-6"></script>
   </body>
 </html>

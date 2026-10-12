@@ -1,12 +1,12 @@
-import {buildReportModel} from "./report-model.js?v=20261012-4";
-import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-4";
+import {buildReportModel} from "./report-model.js?v=20261012-6";
+import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-6";
 import {
   requestAddressSearch,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js?v=20261012-4";
+} from "./browser-api.js?v=20261012-6";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;
@@ -72,7 +72,7 @@ const elements = {
   downloadReport: $("#downloadReport"),
   reportDialog: $("#reportDialog"),
   reportDialogAddress: $("#reportDialogAddress"),
-  reportFrame: $("#reportFrame"),
+  reportPreview: $("#reportPreview"),
   reportDownload: $("#reportDownload"),
   closeReport: $("#closeReport"),
   exportProgress: $("#exportProgress"),
@@ -674,13 +674,13 @@ elements.downloadReport.addEventListener("click", async () => {
     const result = await window.TojiIyongReport.generatePdf(model, updateExportProgress);
     if (reportObjectUrl) URL.revokeObjectURL(reportObjectUrl);
     reportObjectUrl = URL.createObjectURL(result.blob);
-    elements.reportFrame.src = reportObjectUrl;
+    elements.reportPreview.innerHTML = result.previewHtml;
     elements.reportDownload.href = reportObjectUrl;
     elements.reportDownload.download = result.fileName;
     elements.reportDialogAddress.textContent = model.address;
     elements.exportProgress.hidden = true;
     elements.reportDialog.showModal();
-    setStatus("PDF 보고서 미리보기를 열었습니다.");
+    setStatus("보고서 미리보기를 열었습니다. PDF 파일은 상단에서 다운로드할 수 있어요.");
   } catch (error) {
     console.error("PDF report export failed", error);
     elements.exportProgress.hidden = true;
@@ -699,7 +699,7 @@ elements.reportDialog.addEventListener("click", (event) => {
   if (event.target === elements.reportDialog) closeReportViewer();
 });
 elements.reportDialog.addEventListener("close", () => {
-  elements.reportFrame.removeAttribute("src");
+  elements.reportPreview.replaceChildren();
   elements.reportDownload.removeAttribute("href");
   if (reportObjectUrl) URL.revokeObjectURL(reportObjectUrl);
   reportObjectUrl = "";
