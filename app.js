@@ -1,6 +1,6 @@
 import {buildReportModel} from "./report-model.js?v=20261012-9";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
-import {TRANSACTION_TYPES, hasMolitApiKey, requestTransactions} from "./transaction-api.js?v=20261012-9";
+import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
 import {hasDistrictPlan} from "./property-documents.js?v=20261012-9";
 import {
   requestAddressSearch,
@@ -54,6 +54,8 @@ const elements = {
   buildingSummaryStatus: $("#buildingSummaryStatus"),
   buildingSummaryDetail: $("#buildingSummaryDetail"),
   openPropertyDocuments: $("#openPropertyDocuments"),
+  landRegisterLink: $("#landRegisterLink"),
+  landUseLink: $("#landUseLink"),
   transactionCard: $("#transactionCard"),
   transactionTypeTabs: $("#transactionTypeTabs"),
   transactionQueryTitle: $("#transactionQueryTitle"),
@@ -130,6 +132,7 @@ let mapSearchController;
 let mapClickController;
 let mapLocationRequestId = 0;
 let transactionController;
+let transactionAutoSelectionToken = 0;
 let selectedTransactionType = "land";
 let buildingController;
 let selectedBuildings = [];
@@ -435,21 +438,36 @@ async function loadBuildingSummary(item) {
   elements.buildingSummaryDetail.hidden = true;
   try {
     const payload = await requestBuildingRecords(item.pnu, buildingController.signal);
-    if (selectedItem?.pnu !== item.pnu) return;
-    renderBuildingSummary(payload.items || []);
+    if (selectedItem?.pnu !== item.pnu) return null;
+    const items = payload.items || [];
+    renderBuildingSummary(items);
+    return items;
   } catch (error) {
-    if (error.name !== "AbortError" && selectedItem?.pnu === item.pnu) renderBuildingSummary([], {error: true});
+    if (error.name === "AbortError" || selectedItem?.pnu !== item.pnu) return null;
+    renderBuildingSummary([], {error: true});
+    return [];
   }
+}
+
+function buildPropertyDocumentViewerUrl(item, data, tab = "building") {
+  const params = new URLSearchParams({
+    pnu: item.pnu,
+    address: data?.address || item.parcelAddress || item.primaryAddress || "선택한 필지",
+    districtPlan: hasDistrictPlan(data, item.pnu) ? "1" : "0",
+    tab
+  });
+  return `./building-ledger.html?${params}`;
+}
+
+function updatePropertyDocumentLinks(item, data) {
+  elements.landRegisterLink.href = buildPropertyDocumentViewerUrl(item, data, "landRegister");
+  elements.landUseLink.href = buildPropertyDocumentViewerUrl(item, data, "landUse");
+  elements.officialLink.href = buildPropertyDocumentViewerUrl(item, data, "eum");
 }
 
 function openPropertyDocumentViewer() {
   if (!selectedItem || !selectedData) return;
-  const params = new URLSearchParams({
-    pnu: selectedItem.pnu,
-    address: selectedData.address || selectedItem.parcelAddress || selectedItem.primaryAddress || "선택한 필지",
-    districtPlan: hasDistrictPlan(selectedData, selectedItem.pnu) ? "1" : "0"
-  });
-  window.open(`./building-ledger.html?${params}`, "_blank", "noopener,noreferrer");
+  window.open(buildPropertyDocumentViewerUrl(selectedItem, selectedData), "_blank", "noopener,noreferrer");
 }
 
 function formatDealAmount(amount) {
@@ -494,6 +512,7 @@ function updateTransactionType(type) {
 }
 
 function resetTransactionPanel(item, data) {
+  transactionAutoSelectionToken += 1;
   transactionController?.abort();
   elements.transactionCard.open = false;
   elements.transactionResults.hidden = true;
@@ -502,24 +521,25 @@ function resetTransactionPanel(item, data) {
   elements.transactionTrendChart.replaceChildren();
   elements.transactionList.replaceChildren();
   elements.transactionTypeTabs.querySelectorAll("[data-transaction-type]").forEach((button) => button.classList.remove("recommended"));
-  const buildingName = String(item.buildingName || "");
-  const recommendation = /오피스텔/i.test(buildingName)
-    ? "officetel"
-    : /연립|빌라|다세대/i.test(buildingName)
-      ? "rowHouse"
-      : /상가|업무|타워|플라자|센터/i.test(buildingName)
-        ? "commercial"
-        : /공장|창고/i.test(buildingName)
-          ? "factory"
-          : buildingName
-            ? "apartment"
-            : "";
-  if (recommendation) elements.transactionTypeTabs.querySelector(`[data-transaction-type="${recommendation}"]`)?.classList.add("recommended");
   updateTransactionType("land");
   const address = data.address || item.parcelAddress || item.primaryAddress || "선택한 필지";
   elements.auctionAddress.textContent = address;
   elements.copyAuctionAddress.dataset.address = address;
   elements.copyAuctionAddress.textContent = "주소 복사";
+}
+
+async function initializeTransactionPanel(item, data) {
+  const token = transactionAutoSelectionToken;
+  elements.transactionCard.open = true;
+  elements.transactionQueryHint.textContent = "필지의 건축물 용도를 확인해 기본 유형을 선택하고 있어요.";
+  const buildings = await loadBuildingSummary(item);
+  if (buildings === null || token !== transactionAutoSelectionToken || selectedItem?.pnu !== item.pnu) return;
+
+  const recommendation = recommendTransactionType({buildingName: item.buildingName, buildings});
+  elements.transactionTypeTabs.querySelector(`[data-transaction-type="${recommendation}"]`)?.classList.add("recommended");
+  updateTransactionType(recommendation);
+  elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[recommendation].label} 유형으로 최근 24개월을 자동 조회합니다.`;
+  if (hasMolitApiKey()) void loadTransactionsForSelectedParcel({automatic: true});
 }
 
 function appendTransactionStat(label, value, note = "") {
@@ -599,7 +619,7 @@ function renderTransactionResult(result) {
   }
 }
 
-async function loadTransactionsForSelectedParcel() {
+async function loadTransactionsForSelectedParcel({automatic = false} = {}) {
   if (!selectedItem || !selectedData) return;
   transactionController?.abort();
   transactionController = new AbortController();
@@ -624,10 +644,14 @@ async function loadTransactionsForSelectedParcel() {
       }
     });
     renderTransactionResult(result);
+    elements.transactionQueryHint.textContent = automatic
+      ? "선택한 필지를 기준으로 자동 조회했습니다. 필요하면 다시 조회할 수 있어요."
+      : "선택한 유형의 최근 24개월 자료입니다.";
   } catch (error) {
     if (error.name === "AbortError") return;
     elements.transactionMessage.textContent = error.message;
     elements.transactionMessage.className = "transaction-message error";
+    if (automatic) elements.transactionQueryHint.textContent = "자동 조회하지 못했습니다. 잠시 후 다시 조회해 주세요.";
   } finally {
     elements.transactionProgress.hidden = true;
     elements.loadTransactions.disabled = !hasMolitApiKey();
@@ -711,12 +735,12 @@ function renderSummary(data, item) {
   elements.summaryTitle.textContent = data.address || item.parcelAddress || item.primaryAddress;
   elements.summaryRoad.textContent = item.roadAddress ? `도로명 ${item.roadAddress}` : `필지고유번호 ${item.pnu}`;
   renderFacts(data, item);
-  void loadBuildingSummary(item);
   renderZoneList(elements.nationalPlan, data.nationalPlan);
   renderZoneList(elements.otherLaws, [...(data.otherLaws || []), ...(data.decree || [])]);
   renderRestrictions(data.restrictions);
   resetTransactionPanel(item, data);
-  elements.officialLink.href = data.officialUrl;
+  void initializeTransactionPanel(item, data);
+  updatePropertyDocumentLinks(item, data);
   elements.viewMap.hidden = !(Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)));
   elements.summary.hidden = false;
 }
@@ -983,7 +1007,7 @@ async function selectParcel(item) {
   elements.summary.hidden = true;
   showLookupProgress(item);
   setStatus("토지이음에서 토지이용계획을 확인하고 있어요.");
-  elements.officialLink.href = fallbackOfficialUrl(item.pnu);
+  updatePropertyDocumentLinks(item, null);
   try {
     const payload = await requestLandUse(item.pnu, detailController.signal);
     selectedData = payload.data;
@@ -1108,7 +1132,14 @@ document.querySelectorAll("[data-map-layer]").forEach((button) => {
 });
 elements.transactionTypeTabs.addEventListener("click", (event) => {
   const button = event.target.closest("[data-transaction-type]");
-  if (button) updateTransactionType(button.dataset.transactionType);
+  if (button) {
+    transactionAutoSelectionToken += 1;
+    updateTransactionType(button.dataset.transactionType);
+    if (selectedItem && selectedData && hasMolitApiKey()) {
+      elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[selectedTransactionType].label} 유형으로 최근 24개월을 바로 조회합니다.`;
+      void loadTransactionsForSelectedParcel();
+    }
+  }
 });
 elements.loadTransactions.addEventListener("click", () => void loadTransactionsForSelectedParcel());
 elements.copyAuctionAddress.addEventListener("click", () => void copyAuctionAddress());

@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261012-9" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-14" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -105,9 +105,17 @@
         </div>
 
         <div class="summary-actions summary-actions--primary" aria-label="선택한 필지 주요 기능">
-          <a class="primary-action" id="officialLink" href="https://www.eum.go.kr/" target="_blank" rel="noopener noreferrer">
-            토지이음에서 원문 보기 <span aria-hidden="true">↗</span>
-          </a>
+          <nav class="document-links" aria-label="대장·토지이음 통합 보기 바로가기">
+            <a class="document-link" id="landRegisterLink" href="./building-ledger.html?tab=landRegister" target="_blank" rel="noopener noreferrer">
+              토지대장 <span aria-hidden="true">↗</span>
+            </a>
+            <a class="document-link" id="landUseLink" href="./building-ledger.html?tab=landUse" target="_blank" rel="noopener noreferrer">
+              토지이용계획확인원 <span aria-hidden="true">↗</span>
+            </a>
+            <a class="document-link document-link--primary" id="officialLink" href="./building-ledger.html?tab=eum" target="_blank" rel="noopener noreferrer">
+              토지이음 <span aria-hidden="true">↗</span>
+            </a>
+          </nav>
           <button class="map-action" id="viewMap" type="button" hidden>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
             지도에서 보기
@@ -130,7 +138,7 @@
             <p id="buildingSummaryStatus">이 필지의 건축물 정보를 확인하고 있어요.</p>
             <div class="building-summary__detail" id="buildingSummaryDetail" hidden></div>
           </div>
-          <button id="openPropertyDocuments" type="button">대장 통합 보기 <span aria-hidden="true">↗</span></button>
+          <button id="openPropertyDocuments" type="button">대장·토지이음 통합 보기 <span aria-hidden="true">↗</span></button>
         </article>
 
         <details class="transaction-card" id="transactionCard">
@@ -138,7 +146,7 @@
             <span class="transaction-card__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><path d="m3 7 5-4 5 6 7-6"/></svg>
             </span>
-            <span><small>국토교통부 공개정보</small><strong>실거래 참고</strong><em>선택한 유형의 최근 24개월 매매 거래를 확인합니다.</em></span>
+            <span><small>국토교통부 공개정보</small><strong>실거래 참고</strong><em>필지에 맞는 유형을 선택해 최근 24개월 매매 거래를 자동 조회합니다.</em></span>
             <b>펼쳐 보기</b>
           </summary>
           <div class="transaction-card__body">
@@ -152,7 +160,7 @@
               <button type="button" role="tab" aria-selected="false" data-transaction-type="factory">공장·창고</button>
             </div>
             <div class="transaction-query">
-              <div><b id="transactionQueryTitle">토지 매매 실거래</b><small id="transactionQueryHint">버튼을 누르면 최근 24개월 자료를 조회합니다.</small></div>
+              <div><b id="transactionQueryTitle">토지 매매 실거래</b><small id="transactionQueryHint">필지를 선택하면 최근 24개월 자료를 자동 조회합니다.</small></div>
               <button id="loadTransactions" type="button">최근 24개월 조회</button>
             </div>
             <div class="transaction-progress" id="transactionProgress" role="status" aria-live="polite" hidden>
@@ -315,6 +323,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
     <script type="module" src="./report-export.js?v=20261012-9"></script>
-    <script type="module" src="./app.js?v=20261012-9"></script>
+    <script type="module" src="./app.js?v=20261013-14"></script>
   </body>
 </html>

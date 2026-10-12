@@ -7,13 +7,15 @@ import {
   buildingPostFields,
   landRegisterPostFields,
   landUsePostFields,
+  normalizePropertyDocumentTab,
   parcelDocumentIdentity
-} from "./property-documents.js?v=20261012-10";
+} from "./property-documents.js?v=20261013-12";
 
 const params = new URLSearchParams(window.location.search);
 const pnu = String(params.get("pnu") || "");
 const address = String(params.get("address") || "선택한 필지").slice(0, 160);
 const districtPlanEnabled = params.get("districtPlan") === "1";
+const initialTab = normalizePropertyDocumentTab(params.get("tab"));
 const valid = /^\d{19}$/.test(pnu);
 const loadedTabs = new Set();
 let buildings = [];
@@ -31,6 +33,7 @@ const elements = {
   buildingOverview: $("#buildingOverview"),
   buildingFrameShell: $("#buildingFrameShell"),
   buildingFrame: $("#buildingFrame"),
+  eumExternalLink: $("#eumExternalLink"),
   lifecycleTab: $("#tabLifecycle"),
   districtPlanTab: $("#tabDistrictPlan")
 };
@@ -239,6 +242,7 @@ function openActiveDocument() {
 }
 
 elements.address.textContent = valid ? `${address} · PNU ${pnu}` : "필지 정보가 올바르지 않습니다.";
+if (valid) elements.eumExternalLink.href = buildEumLandUseUrl(pnu);
 elements.districtPlanTab.hidden = !(valid && districtPlanEnabled && pnu.startsWith("11"));
 elements.tabs.addEventListener("click", (event) => {
   const button = event.target.closest("[data-document-tab]");
@@ -276,5 +280,6 @@ if (!valid) {
   elements.error.hidden = false;
 } else {
   parcelDocumentIdentity(pnu);
+  if (initialTab !== "building") activateTab(initialTab);
   void loadBuildings();
 }

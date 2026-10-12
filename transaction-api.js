@@ -5,9 +5,10 @@ import {
   parcelIdentity,
   parseTransactionXml,
   pruneCacheRecords,
+  recommendTransactionType,
   recentMonths,
   runWithConcurrency
-} from "./transaction-model.js?v=20261012-8";
+} from "./transaction-model.js?v=20261013-11";
 
 const DATABASE_NAME = "tojiiyonghannun-rtms-v1";
 const STORE_NAME = "monthly-transactions";
@@ -211,4 +212,4 @@ export async function requestTransactions({
   };
 }
 
-export {TRANSACTION_TYPES};
+export {TRANSACTION_TYPES, recommendTransactionType};

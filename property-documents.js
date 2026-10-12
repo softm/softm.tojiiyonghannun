@@ -7,6 +7,13 @@ export const PROPERTY_DOCUMENT_URLS = Object.freeze({
   lifecycle: "https://blcm.go.kr/lim/bldSumInfo/BldSumInfoView.do"
 });
 
+const PROPERTY_DOCUMENT_TABS = new Set(["building", "landRegister", "landUse", "eum"]);
+
+export function normalizePropertyDocumentTab(value) {
+  const tab = String(value || "");
+  return PROPERTY_DOCUMENT_TABS.has(tab) ? tab : "building";
+}
+
 function cleanText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }

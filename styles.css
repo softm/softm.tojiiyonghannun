@@ -258,11 +258,16 @@ h1 em { color: var(--green); font-style: normal; }
 .restriction-group b { font-size: 12px; }
 .restriction-group span { color: var(--ink-soft); font-size: 11px; line-height: 1.55; }
 .summary-actions { display: flex; gap: 10px; }
-.summary-actions--primary { margin: 20px 0 24px; padding: 14px; border: 1px solid #d6e1db; border-radius: 17px; background: #f7faf8; }
+.summary-actions--primary { flex-wrap: wrap; margin: 20px 0 24px; padding: 14px; border: 1px solid #d6e1db; border-radius: 17px; background: #f7faf8; }
 .summary-actions--secondary { justify-content: flex-end; margin-top: 24px; }
 .primary-action, .secondary-action, .download-action, .map-action { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 22px; border-radius: 14px; font-size: 14px; font-weight: 800; text-decoration: none; cursor: pointer; }
 .primary-action { gap: 8px; border: 1px solid var(--green); background: var(--green); color: #fff; }
 .primary-action:hover { background: var(--green-dark); }
+.document-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex: 1 1 100%; gap: 8px; }
+.document-link { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; padding: 0 16px; border: 1px solid #bdd2c8; border-radius: 13px; background: #fff; color: var(--green-dark); font-size: 13px; font-weight: 800; text-align: center; text-decoration: none; }
+.document-link:hover { border-color: var(--green); background: #f2f8f4; }
+.document-link--primary { border-color: var(--green); background: var(--green); color: #fff; }
+.document-link--primary:hover { background: var(--green-dark); }
 .secondary-action { border: 1px solid #cbd9d2; background: #fff; color: var(--ink); }
 .map-action { gap: 8px; border: 1px solid #bdd2c8; background: #fff; color: var(--green-dark); }
 .map-action:hover { border-color: var(--green); background: #f2f8f4; }
@@ -442,6 +447,8 @@ footer a:hover, footer a:focus-visible { text-decoration: underline; }
   .summary-grid { grid-template-columns: 1fr; }
   .info-card--wide { grid-column: auto; }
   .summary-actions--primary { flex-direction: column; padding: 12px; }
+  .document-links { grid-template-columns: 1fr; width: 100%; }
+  .document-link { width: 100%; }
   .summary-actions--secondary { justify-content: stretch; }
   .summary-actions--secondary .secondary-action { width: 100%; }
   .map-dialog { width: calc(100% - 20px); border-radius: 18px; }

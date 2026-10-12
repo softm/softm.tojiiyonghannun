@@ -36,6 +36,23 @@ export const TRANSACTION_TYPES = Object.freeze({
   }
 });
 
+export function recommendTransactionType({buildingName = "", buildings} = {}) {
+  const hasBuildingData = Array.isArray(buildings);
+  const buildingItems = hasBuildingData ? buildings : [];
+  const description = [
+    hasBuildingData && !buildingItems.length ? "" : buildingName,
+    ...buildingItems.flatMap((building) => [building?.name, building?.dongName, building?.use])
+  ].filter(Boolean).join(" ");
+
+  if (/공장|창고|제조소|산업시설/i.test(description)) return "factory";
+  if (/오피스텔/i.test(description)) return "officetel";
+  if (/연립|다세대|빌라/i.test(description)) return "rowHouse";
+  if (/단독|다가구|다중주택/i.test(description)) return "detached";
+  if (/아파트|공동주택/i.test(description)) return "apartment";
+  if (/상가|근린생활|판매시설|업무시설|타워|플라자|센터|숙박시설|위락시설/i.test(description)) return "commercial";
+  return description && !hasBuildingData ? "apartment" : "land";
+}
+
 const FIELD_ALIASES = Object.freeze({
   amount: ["dealAmount", "거래금액"],
   year: ["dealYear", "년"],
