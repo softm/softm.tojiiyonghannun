@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261012-8" />
+    <link rel="stylesheet" href="./styles.css?v=20261012-9" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -119,6 +119,19 @@
         </div>
 
         <dl class="fact-grid" id="factGrid"></dl>
+
+        <article class="building-summary" id="buildingSummary">
+          <span class="building-summary__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 21V7l8-4 8 4v14M2 21h20M8 9h2M14 9h2M8 13h2M14 13h2M10 21v-4h4v4"/></svg>
+          </span>
+          <div class="building-summary__copy">
+            <small>VWorld · 국토교통부 공개정보</small>
+            <h3>건축물·토지대장</h3>
+            <p id="buildingSummaryStatus">이 필지의 건축물 정보를 확인하고 있어요.</p>
+            <div class="building-summary__detail" id="buildingSummaryDetail" hidden></div>
+          </div>
+          <button id="openPropertyDocuments" type="button">대장 통합 보기 <span aria-hidden="true">↗</span></button>
+        </article>
 
         <details class="transaction-card" id="transactionCard">
           <summary>
@@ -301,7 +314,7 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
-    <script type="module" src="./report-export.js?v=20261012-8"></script>
-    <script type="module" src="./app.js?v=20261012-8"></script>
+    <script type="module" src="./report-export.js?v=20261012-9"></script>
+    <script type="module" src="./app.js?v=20261012-9"></script>
   </body>
 </html>

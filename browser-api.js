@@ -1,3 +1,5 @@
+import {normalizeBuildingRecords} from "./property-documents.js?v=20261012-9";
+
 const PRODUCTION_HOST = "tojiiyonghannun.designboard.net";
 // VWorld 브라우저 키는 등록된 운영 도메인에서만 사용하는 공개 클라이언트 식별자다.
 const VWORLD_BROWSER_KEY = "97B1FE7B-CE7B-4F22-9718-B71DFA7B5685";
@@ -403,5 +405,17 @@ export async function requestLandUse(pnu, signal) {
     if (error.name === "AbortError") throw error;
     throw new Error("현재 요약 정보를 불러오지 못했습니다. 토지이음 원문에서 직접 확인해 주세요.");
   }
+}
+
+export async function requestBuildingRecords(pnu, signal) {
+  if (!validPnu(pnu)) throw new Error("19자리 PNU가 필요합니다.");
+  if (!usesDirectBrowserApi()) return fetchLocalJson(`/api/buildings?pnu=${encodeURIComponent(pnu)}`, signal);
+  const payload = assertVworldResponse(await fetchJsonp(vworldUrl("/ned/data/getBuildingUse", {
+    pnu,
+    pageNo: "1",
+    numOfRows: "100",
+    format: "json"
+  }), {signal}));
+  return {items: normalizeBuildingRecords(payload)};
 }
 

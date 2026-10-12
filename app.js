@@ -1,13 +1,15 @@
-import {buildReportModel} from "./report-model.js?v=20261012-8";
-import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-8";
-import {TRANSACTION_TYPES, hasMolitApiKey, requestTransactions} from "./transaction-api.js?v=20261012-8";
+import {buildReportModel} from "./report-model.js?v=20261012-9";
+import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
+import {TRANSACTION_TYPES, hasMolitApiKey, requestTransactions} from "./transaction-api.js?v=20261012-9";
+import {hasDistrictPlan} from "./property-documents.js?v=20261012-9";
 import {
   requestAddressSearch,
+  requestBuildingRecords,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js?v=20261012-8";
+} from "./browser-api.js?v=20261012-9";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;
@@ -49,6 +51,9 @@ const elements = {
   summaryTitle: $("#summaryTitle"),
   summaryRoad: $("#summaryRoad"),
   factGrid: $("#factGrid"),
+  buildingSummaryStatus: $("#buildingSummaryStatus"),
+  buildingSummaryDetail: $("#buildingSummaryDetail"),
+  openPropertyDocuments: $("#openPropertyDocuments"),
   transactionCard: $("#transactionCard"),
   transactionTypeTabs: $("#transactionTypeTabs"),
   transactionQueryTitle: $("#transactionQueryTitle"),
@@ -126,6 +131,8 @@ let mapClickController;
 let mapLocationRequestId = 0;
 let transactionController;
 let selectedTransactionType = "land";
+let buildingController;
+let selectedBuildings = [];
 
 const mapGeoJson = new GeoJSON();
 const mapBoundaryStyle = [
@@ -375,6 +382,74 @@ function renderFacts(data, item) {
     group.append(dd);
     elements.factGrid.append(group);
   });
+}
+
+function formatBuildingMetric(value, unit = "㎡") {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return `${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(number)}${unit}`;
+}
+
+function formatBuildingApprovalDate(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length < 4) return "미제공";
+  return digits.length >= 8 ? `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}` : `${digits.slice(0, 4)}년`;
+}
+
+function buildingDisplayName(building, fallback = "건축물") {
+  return [building?.name, building?.dongName && building.dongName !== building.name ? building.dongName : ""].filter(Boolean).join(" · ") || fallback;
+}
+
+function renderBuildingSummary(items, {error = false} = {}) {
+  selectedBuildings = Array.isArray(items) ? items : [];
+  elements.buildingSummaryDetail.replaceChildren();
+  elements.buildingSummaryDetail.hidden = true;
+  if (!selectedBuildings.length) {
+    elements.buildingSummaryStatus.textContent = error
+      ? "건축물 공개정보를 불러오지 못했습니다. 통합 보기에서 토지대장은 계속 확인할 수 있어요."
+      : "이 필지에서 확인된 건축물이 없습니다. 토지대장·토지이용계획확인원은 조회할 수 있어요.";
+    return;
+  }
+  const primary = selectedBuildings[0];
+  const floors = [primary.groundFloors ? `지상 ${primary.groundFloors}층` : "", primary.undergroundFloors ? `지하 ${primary.undergroundFloors}층` : ""].filter(Boolean).join(" · ");
+  elements.buildingSummaryStatus.textContent = `${selectedBuildings.length}개 건축물이 확인됐습니다. 통합 보기에서 전체 또는 개별 건축물을 선택하세요.`;
+  [
+    ["대표 건축물", buildingDisplayName(primary, "명칭 미제공")],
+    ["주용도", primary.use || "미제공"],
+    ["층수", floors || "미제공"],
+    ["연면적", formatBuildingMetric(primary.totalArea)],
+    ["사용승인", formatBuildingApprovalDate(primary.approvalDate)]
+  ].forEach(([label, value]) => {
+    const span = createElement("span");
+    span.append(createElement("small", "", label), createElement("b", "", value));
+    elements.buildingSummaryDetail.append(span);
+  });
+  elements.buildingSummaryDetail.hidden = false;
+}
+
+async function loadBuildingSummary(item) {
+  buildingController?.abort();
+  buildingController = new AbortController();
+  selectedBuildings = [];
+  elements.buildingSummaryStatus.textContent = "이 필지의 건축물 정보를 확인하고 있어요.";
+  elements.buildingSummaryDetail.hidden = true;
+  try {
+    const payload = await requestBuildingRecords(item.pnu, buildingController.signal);
+    if (selectedItem?.pnu !== item.pnu) return;
+    renderBuildingSummary(payload.items || []);
+  } catch (error) {
+    if (error.name !== "AbortError" && selectedItem?.pnu === item.pnu) renderBuildingSummary([], {error: true});
+  }
+}
+
+function openPropertyDocumentViewer() {
+  if (!selectedItem || !selectedData) return;
+  const params = new URLSearchParams({
+    pnu: selectedItem.pnu,
+    address: selectedData.address || selectedItem.parcelAddress || selectedItem.primaryAddress || "선택한 필지",
+    districtPlan: hasDistrictPlan(selectedData, selectedItem.pnu) ? "1" : "0"
+  });
+  window.open(`./building-ledger.html?${params}`, "_blank", "noopener,noreferrer");
 }
 
 function formatDealAmount(amount) {
@@ -636,6 +711,7 @@ function renderSummary(data, item) {
   elements.summaryTitle.textContent = data.address || item.parcelAddress || item.primaryAddress;
   elements.summaryRoad.textContent = item.roadAddress ? `도로명 ${item.roadAddress}` : `필지고유번호 ${item.pnu}`;
   renderFacts(data, item);
+  void loadBuildingSummary(item);
   renderZoneList(elements.nationalPlan, data.nationalPlan);
   renderZoneList(elements.otherLaws, [...(data.otherLaws || []), ...(data.decree || [])]);
   renderRestrictions(data.restrictions);
@@ -1036,6 +1112,7 @@ elements.transactionTypeTabs.addEventListener("click", (event) => {
 });
 elements.loadTransactions.addEventListener("click", () => void loadTransactionsForSelectedParcel());
 elements.copyAuctionAddress.addEventListener("click", () => void copyAuctionAddress());
+elements.openPropertyDocuments.addEventListener("click", openPropertyDocumentViewer);
 
 elements.form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1088,6 +1165,8 @@ elements.searchAgain.addEventListener("click", () => {
   closeReportViewer();
   selectedItem = null;
   selectedData = null;
+  buildingController?.abort();
+  selectedBuildings = [];
   hideLookupProgress();
   elements.summary.hidden = true;
   elements.results.hidden = true;

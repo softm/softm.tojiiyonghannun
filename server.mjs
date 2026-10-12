@@ -12,6 +12,7 @@ import {
   normalizeSearchItems,
   parseEumLandUseHtml
 } from "./lib/land-use.mjs";
+import {normalizeBuildingRecords} from "./property-documents.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const defaultPort = Number(process.env.PORT || 4173);
@@ -362,6 +363,28 @@ async function handleLandUse(response, incomingUrl, fetchImpl, getConfig) {
   }
 }
 
+async function handleBuildings(response, incomingUrl, fetchImpl, getConfig) {
+  const pnu = String(incomingUrl.searchParams.get("pnu") || "");
+  if (!isValidPnu(pnu)) {
+    writeJson(response, 400, {error: "19자리 PNU가 필요합니다."});
+    return;
+  }
+  try {
+    const config = getConfig();
+    const target = new URL("https://api.vworld.kr/ned/data/getBuildingUse");
+    Object.entries({pnu, pageNo: "1", numOfRows: "100", format: "json", key: config.vworldApiKey, domain: config.vworldDomain})
+      .forEach(([key, value]) => target.searchParams.set(key, value));
+    const payload = await fetchJson(fetchImpl, target, {
+      headers: {"Accept": "application/json", "Referer": `https://${config.vworldDomain}/`, "User-Agent": "TojiIyongHannun/1.0"},
+      signal: AbortSignal.timeout(12000)
+    });
+    writeJson(response, 200, {items: normalizeBuildingRecords(payload)}, "private, max-age=3600");
+  } catch (error) {
+    console.error("건축물 공개정보 연결 실패:", error.message);
+    writeJson(response, 502, {error: "건축물 공개정보를 불러오지 못했습니다."});
+  }
+}
+
 function serveStatic(response, pathname) {
   const requestPath = pathname === "/" ? "/index.html" : pathname;
   if (deniedFiles.has(requestPath) || requestPath.startsWith("/.") || requestPath.startsWith("/lib/") || requestPath.startsWith("/tests/")) {
@@ -386,7 +409,7 @@ function serveStatic(response, pathname) {
   response.writeHead(200, {
     "Content-Type": mimeTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream",
     "Cache-Control": "no-cache",
-    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; img-src 'self' data: blob: https://xdworld.vworld.kr https://api.vworld.kr; connect-src 'self' https://xdworld.vworld.kr https://api.vworld.kr https://www.eum.go.kr https://apis.data.go.kr; frame-src 'self' blob:; base-uri 'none'; form-action 'self' https://www.eum.go.kr; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; img-src 'self' data: blob: https://xdworld.vworld.kr https://api.vworld.kr; connect-src 'self' https://xdworld.vworld.kr https://api.vworld.kr https://www.eum.go.kr https://apis.data.go.kr; frame-src 'self' blob: https://irts.molit.go.kr https://urban.seoul.go.kr https://blcm.go.kr; base-uri 'none'; form-action 'self' https://www.eum.go.kr https://irts.molit.go.kr; frame-ancestors 'none'",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff"
   });
@@ -411,6 +434,10 @@ export function createAppServer({fetchImpl = fetch, getConfig = readLocalConfig}
     }
     if (incomingUrl.pathname === "/api/land-use") {
       await handleLandUse(response, incomingUrl, fetchImpl, getConfig);
+      return;
+    }
+    if (incomingUrl.pathname === "/api/buildings") {
+      await handleBuildings(response, incomingUrl, fetchImpl, getConfig);
       return;
     }
     if (incomingUrl.pathname === "/api/vicinity-map") {
