@@ -32,6 +32,18 @@ test("보고서 미리보기는 모바일 호환 HTML 컨테이너를 사용한�
   });
 });
 
+test("지도 화면은 현재 위치 기반 필지 조회 동작을 제공한다", async () => {
+  await withServer(fetch, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`);
+    const html = await response.text();
+    const script = await (await fetch(`${baseUrl}/app.js`)).text();
+    assert.match(html, /id="currentLocation"/);
+    assert.match(html, />현재 위치</);
+    assert.match(script, /navigator\.geolocation\.getCurrentPosition/);
+    assert.match(script, /await chooseMapPoint\(\[longitude, latitude\]\)/);
+  });
+});
+
 test("주소 검색 API가 두 검색 범주를 합쳐 반환한다", async () => {
   let calls = 0;
   const fetchImpl = async (url) => {
