@@ -37,8 +37,24 @@ function readLocalConfig() {
   }
   const vworldApiKey = process.env.VWORLD_API_KEY || text.match(/vworldApiKey:\s*["']([^"']+)["']/)?.[1] || "";
   const vworldDomain = process.env.VWORLD_DOMAIN || text.match(/vworldDomain:\s*["']([^"']+)["']/)?.[1] || "localhost";
+  const molitApiKey = process.env.MOLIT_API_KEY || text.match(/molitApiKey:\s*["']([^"']+)["']/)?.[1] || "";
   if (!vworldApiKey || vworldApiKey === "YOUR_VWORLD_API_KEY") throw new Error("VWorld API key is not configured");
-  return {vworldApiKey, vworldDomain};
+  return {vworldApiKey, vworldDomain, molitApiKey: molitApiKey === "YOUR_MOLIT_API_KEY" ? "" : molitApiKey};
+}
+
+function writeRuntimeConfig(response, getConfig) {
+  let molitApiKey = "";
+  try {
+    molitApiKey = String(getConfig()?.molitApiKey || "");
+  } catch {
+    // VWorld 설정과 무관하게 실거래 카드가 비활성 상태로 표시되도록 빈 설정을 제공한다.
+  }
+  response.writeHead(200, {
+    "Content-Type": "text/javascript; charset=utf-8",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff"
+  });
+  response.end(`globalThis.__TOJI_RUNTIME_CONFIG__ = Object.freeze(${JSON.stringify({molitApiKey})});\n`);
 }
 
 function writeJson(response, status, body, cacheControl = "no-store") {
@@ -370,7 +386,7 @@ function serveStatic(response, pathname) {
   response.writeHead(200, {
     "Content-Type": mimeTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream",
     "Cache-Control": "no-cache",
-    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; img-src 'self' data: blob: https://xdworld.vworld.kr https://api.vworld.kr; connect-src 'self' https://xdworld.vworld.kr https://api.vworld.kr https://www.eum.go.kr; frame-src 'self' blob:; base-uri 'none'; form-action 'self' https://www.eum.go.kr; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; img-src 'self' data: blob: https://xdworld.vworld.kr https://api.vworld.kr; connect-src 'self' https://xdworld.vworld.kr https://api.vworld.kr https://www.eum.go.kr https://apis.data.go.kr; frame-src 'self' blob:; base-uri 'none'; form-action 'self' https://www.eum.go.kr; frame-ancestors 'none'",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff"
   });
@@ -387,6 +403,10 @@ export function createAppServer({fetchImpl = fetch, getConfig = readLocalConfig}
     }
     if (incomingUrl.pathname === "/api/address-search") {
       await handleAddressSearch(response, incomingUrl, fetchImpl, getConfig);
+      return;
+    }
+    if (incomingUrl.pathname === "/runtime-config.js") {
+      writeRuntimeConfig(response, getConfig);
       return;
     }
     if (incomingUrl.pathname === "/api/land-use") {

@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261012-7" />
+    <link rel="stylesheet" href="./styles.css?v=20261012-8" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -119,6 +119,66 @@
         </div>
 
         <dl class="fact-grid" id="factGrid"></dl>
+
+        <details class="transaction-card" id="transactionCard">
+          <summary>
+            <span class="transaction-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><path d="m3 7 5-4 5 6 7-6"/></svg>
+            </span>
+            <span><small>국토교통부 공개정보</small><strong>실거래 참고</strong><em>선택한 유형의 최근 24개월 매매 거래를 확인합니다.</em></span>
+            <b>펼쳐 보기</b>
+          </summary>
+          <div class="transaction-card__body">
+            <div class="transaction-type-tabs" id="transactionTypeTabs" role="tablist" aria-label="실거래 부동산 유형">
+              <button class="active" type="button" role="tab" aria-selected="true" data-transaction-type="land">토지</button>
+              <button type="button" role="tab" aria-selected="false" data-transaction-type="apartment">아파트</button>
+              <button type="button" role="tab" aria-selected="false" data-transaction-type="officetel">오피스텔</button>
+              <button type="button" role="tab" aria-selected="false" data-transaction-type="rowHouse">연립·다세대</button>
+              <button type="button" role="tab" aria-selected="false" data-transaction-type="detached">단독·다가구</button>
+              <button type="button" role="tab" aria-selected="false" data-transaction-type="commercial">상업·업무</button>
+              <button type="button" role="tab" aria-selected="false" data-transaction-type="factory">공장·창고</button>
+            </div>
+            <div class="transaction-query">
+              <div><b id="transactionQueryTitle">토지 매매 실거래</b><small id="transactionQueryHint">버튼을 누르면 최근 24개월 자료를 조회합니다.</small></div>
+              <button id="loadTransactions" type="button">최근 24개월 조회</button>
+            </div>
+            <div class="transaction-progress" id="transactionProgress" role="status" aria-live="polite" hidden>
+              <span><b id="transactionProgressText">실거래 자료를 불러오고 있어요</b><em id="transactionProgressValue">0 / 24개월</em></span>
+              <i><b id="transactionProgressBar"></b></i>
+            </div>
+            <div class="transaction-message" id="transactionMessage" role="status" aria-live="polite"></div>
+            <div class="transaction-results" id="transactionResults" hidden>
+              <header class="transaction-results__head">
+                <div><span id="transactionScopeBadge">법정동 유사 거래</span><h3 id="transactionResultTitle">실거래 요약</h3></div>
+                <small id="transactionResultMeta"></small>
+              </header>
+              <dl class="transaction-stats" id="transactionStats"></dl>
+              <section class="transaction-trend" aria-labelledby="transactionTrendTitle">
+                <header><h4 id="transactionTrendTitle">월별 ㎡당 중간가격</h4><small>거래가 있는 월 기준</small></header>
+                <div id="transactionTrendChart"></div>
+              </section>
+              <section class="transaction-list-section" aria-labelledby="transactionListTitle">
+                <header><h4 id="transactionListTitle">최근 거래</h4><small>최대 12건</small></header>
+                <div class="transaction-list" id="transactionList"></div>
+              </section>
+            </div>
+            <div class="transaction-links">
+              <a href="https://rt.molit.go.kr/" target="_blank" rel="noopener noreferrer">국토교통부 실거래가 공개시스템 <span aria-hidden="true">↗</span></a>
+              <p>실거래가는 일반시세·감정가·미래가치가 아니며, 일부 유형은 개인정보 보호를 위해 지번이 일부만 공개됩니다.</p>
+            </div>
+          </div>
+        </details>
+
+        <article class="auction-card">
+          <span class="auction-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m4 13 7-7 7 7-7 7zM14 3l7 7M3 14l7 7M14 14l7 7"/></svg>
+          </span>
+          <div><small>대한민국 법원 공식 정보</small><h3>경매 물건 확인</h3><p id="auctionAddress">선택한 주소를 복사해 법원경매정보에서 검색하세요.</p></div>
+          <div class="auction-card__actions">
+            <button id="copyAuctionAddress" type="button">주소 복사</button>
+            <a href="https://www.courtauction.go.kr/" target="_blank" rel="noopener noreferrer">법원경매정보 열기 <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
 
         <div class="summary-grid">
           <article class="info-card">
@@ -237,10 +297,11 @@
       </div>
     </dialog>
 
+    <script src="./runtime-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
-    <script type="module" src="./report-export.js?v=20261012-7"></script>
-    <script type="module" src="./app.js?v=20261012-7"></script>
+    <script type="module" src="./report-export.js?v=20261012-8"></script>
+    <script type="module" src="./app.js?v=20261012-8"></script>
   </body>
 </html>

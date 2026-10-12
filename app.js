@@ -1,12 +1,13 @@
-import {buildReportModel} from "./report-model.js?v=20261012-7";
-import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-7";
+import {buildReportModel} from "./report-model.js?v=20261012-8";
+import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-8";
+import {TRANSACTION_TYPES, hasMolitApiKey, requestTransactions} from "./transaction-api.js?v=20261012-8";
 import {
   requestAddressSearch,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js?v=20261012-7";
+} from "./browser-api.js?v=20261012-8";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;
@@ -48,6 +49,25 @@ const elements = {
   summaryTitle: $("#summaryTitle"),
   summaryRoad: $("#summaryRoad"),
   factGrid: $("#factGrid"),
+  transactionCard: $("#transactionCard"),
+  transactionTypeTabs: $("#transactionTypeTabs"),
+  transactionQueryTitle: $("#transactionQueryTitle"),
+  transactionQueryHint: $("#transactionQueryHint"),
+  loadTransactions: $("#loadTransactions"),
+  transactionProgress: $("#transactionProgress"),
+  transactionProgressText: $("#transactionProgressText"),
+  transactionProgressValue: $("#transactionProgressValue"),
+  transactionProgressBar: $("#transactionProgressBar"),
+  transactionMessage: $("#transactionMessage"),
+  transactionResults: $("#transactionResults"),
+  transactionScopeBadge: $("#transactionScopeBadge"),
+  transactionResultTitle: $("#transactionResultTitle"),
+  transactionResultMeta: $("#transactionResultMeta"),
+  transactionStats: $("#transactionStats"),
+  transactionTrendChart: $("#transactionTrendChart"),
+  transactionList: $("#transactionList"),
+  auctionAddress: $("#auctionAddress"),
+  copyAuctionAddress: $("#copyAuctionAddress"),
   nationalPlan: $("#nationalPlan"),
   otherLaws: $("#otherLaws"),
   restrictions: $("#restrictions"),
@@ -104,6 +124,8 @@ let mapSelectedItem;
 let mapSearchController;
 let mapClickController;
 let mapLocationRequestId = 0;
+let transactionController;
+let selectedTransactionType = "land";
 
 const mapGeoJson = new GeoJSON();
 const mapBoundaryStyle = [
@@ -355,6 +377,208 @@ function renderFacts(data, item) {
   });
 }
 
+function formatDealAmount(amount) {
+  const value = Math.round(Number(amount) || 0);
+  if (!value) return "-";
+  if (value >= 10000) {
+    const billions = Math.floor(value / 10000);
+    const remainder = value % 10000;
+    return `${billions}억${remainder ? ` ${new Intl.NumberFormat("ko-KR").format(remainder)}만원` : ""}`;
+  }
+  return `${new Intl.NumberFormat("ko-KR").format(value)}만원`;
+}
+
+function formatUnitPrice(value) {
+  const amount = Number(value) || 0;
+  return amount ? `${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 0}).format(amount)}원/㎡` : "-";
+}
+
+function formatContractDate(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[1]}.${match[2]}.${match[3]}` : "날짜 미제공";
+}
+
+function updateTransactionType(type) {
+  if (!TRANSACTION_TYPES[type]) return;
+  transactionController?.abort();
+  selectedTransactionType = type;
+  elements.transactionTypeTabs.querySelectorAll("[data-transaction-type]").forEach((button) => {
+    const active = button.dataset.transactionType === type;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  elements.transactionQueryTitle.textContent = `${TRANSACTION_TYPES[type].label} 매매 실거래`;
+  elements.transactionQueryHint.textContent = "버튼을 누르면 선택 지역의 최근 24개월 자료를 조회합니다.";
+  elements.transactionProgress.hidden = true;
+  elements.transactionResults.hidden = true;
+  elements.transactionMessage.textContent = hasMolitApiKey()
+    ? ""
+    : "실거래 조회용 공공데이터 인증키가 설정되지 않았습니다.";
+  elements.transactionMessage.className = `transaction-message${hasMolitApiKey() ? "" : " error"}`;
+  elements.loadTransactions.disabled = !hasMolitApiKey();
+}
+
+function resetTransactionPanel(item, data) {
+  transactionController?.abort();
+  elements.transactionCard.open = false;
+  elements.transactionResults.hidden = true;
+  elements.transactionProgress.hidden = true;
+  elements.transactionStats.replaceChildren();
+  elements.transactionTrendChart.replaceChildren();
+  elements.transactionList.replaceChildren();
+  elements.transactionTypeTabs.querySelectorAll("[data-transaction-type]").forEach((button) => button.classList.remove("recommended"));
+  const buildingName = String(item.buildingName || "");
+  const recommendation = /오피스텔/i.test(buildingName)
+    ? "officetel"
+    : /연립|빌라|다세대/i.test(buildingName)
+      ? "rowHouse"
+      : /상가|업무|타워|플라자|센터/i.test(buildingName)
+        ? "commercial"
+        : /공장|창고/i.test(buildingName)
+          ? "factory"
+          : buildingName
+            ? "apartment"
+            : "";
+  if (recommendation) elements.transactionTypeTabs.querySelector(`[data-transaction-type="${recommendation}"]`)?.classList.add("recommended");
+  updateTransactionType("land");
+  const address = data.address || item.parcelAddress || item.primaryAddress || "선택한 필지";
+  elements.auctionAddress.textContent = address;
+  elements.copyAuctionAddress.dataset.address = address;
+  elements.copyAuctionAddress.textContent = "주소 복사";
+}
+
+function appendTransactionStat(label, value, note = "") {
+  const group = document.createElement("div");
+  group.append(createElement("dt", "", label));
+  const detail = createElement("dd", "", value);
+  if (note) detail.append(createElement("small", "", note));
+  group.append(detail);
+  elements.transactionStats.append(group);
+}
+
+function renderTransactionTrend(trend) {
+  elements.transactionTrendChart.replaceChildren();
+  if (!trend.length) {
+    elements.transactionTrendChart.append(createElement("p", "transaction-empty", "㎡당 가격을 계산할 수 있는 거래가 없습니다."));
+    return;
+  }
+  const max = Math.max(...trend.map((item) => item.medianUnitPrice));
+  const chart = createElement("div", "transaction-bars");
+  trend.forEach((item) => {
+    const bar = createElement("span", "transaction-bar");
+    bar.style.setProperty("--bar-height", `${Math.max(8, item.medianUnitPrice / max * 100)}%`);
+    bar.title = `${item.month.slice(0, 4)}.${item.month.slice(4)} · ${formatUnitPrice(item.medianUnitPrice)} · ${item.count}건`;
+    bar.setAttribute("aria-label", bar.title);
+    bar.append(createElement("i"), createElement("small", "", `${Number(item.month.slice(4))}월`));
+    chart.append(bar);
+  });
+  elements.transactionTrendChart.append(chart);
+}
+
+function renderTransactionList(items, definition) {
+  elements.transactionList.replaceChildren();
+  if (!items.length) {
+    elements.transactionList.append(createElement("p", "transaction-empty", "표시할 거래가 없습니다."));
+    return;
+  }
+  items.slice(0, 12).forEach((item) => {
+    const article = createElement("article", "transaction-item");
+    const head = createElement("div", "transaction-item__head");
+    head.append(createElement("strong", "", formatDealAmount(item.amount)), createElement("time", "", formatContractDate(item.contractDate)));
+    const title = item.buildingName || [item.legalDong, item.jibun].filter(Boolean).join(" ") || TRANSACTION_TYPES[item.type].label;
+    const meta = [item.area ? `${definition.areaKind} ${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(item.area)}㎡` : "", item.floor ? `${item.floor}층` : "", formatUnitPrice(item.unitPrice)].filter(Boolean);
+    article.append(head, createElement("b", "transaction-item__title", title), createElement("p", "", meta.join(" · ")));
+    elements.transactionList.append(article);
+  });
+}
+
+function renderTransactionResult(result) {
+  elements.transactionResults.hidden = false;
+  const exact = result.scope === "exact";
+  elements.transactionScopeBadge.textContent = exact ? "해당 필지·단지 거래" : "법정동 유사 거래";
+  elements.transactionScopeBadge.classList.toggle("exact", exact);
+  elements.transactionResultTitle.textContent = `${result.definition.label} 최근 24개월 요약`;
+  const notes = [`정상 거래 ${result.totalCount}건`];
+  if (result.cancelledCount) notes.push(`취소 ${result.cancelledCount}건 제외`);
+  if (result.failedMonths) notes.push(`${result.failedMonths}개월 불러오기 실패`);
+  if (result.truncated) notes.push("일부 월 최대 5페이지 표시");
+  elements.transactionResultMeta.textContent = notes.join(" · ");
+  elements.transactionStats.replaceChildren();
+  appendTransactionStat("거래 건수", `${result.totalCount}건`, exact ? "공개 지번 일치" : "비교 가능한 공개 거래");
+  appendTransactionStat("최근 거래일", result.latestDate ? formatContractDate(result.latestDate) : "-");
+  appendTransactionStat("거래금액 중앙값", formatDealAmount(result.medianAmount));
+  appendTransactionStat("㎡당 중앙값", formatUnitPrice(result.medianUnitPrice), result.minUnitPrice ? `${formatUnitPrice(result.minUnitPrice)} ~ ${formatUnitPrice(result.maxUnitPrice)}` : "면적 정보 없음");
+  renderTransactionTrend(result.trend);
+  renderTransactionList(result.items, result.definition);
+  if (!result.totalCount) {
+    elements.transactionMessage.textContent = exact
+      ? "최근 24개월 동안 공개된 해당 필지·단지 거래가 없습니다."
+      : "최근 24개월 동안 비교 가능한 공개 거래가 없습니다.";
+    elements.transactionMessage.className = "transaction-message empty";
+  } else if (result.failedMonths) {
+    elements.transactionMessage.textContent = `일부 자료를 불러오지 못해 ${24 - result.failedMonths}개월 결과만 표시합니다.`;
+    elements.transactionMessage.className = "transaction-message warning";
+  } else {
+    elements.transactionMessage.textContent = result.cachedMonths ? `${result.cachedMonths}개월 자료는 이 브라우저의 캐시를 사용했습니다.` : "";
+    elements.transactionMessage.className = "transaction-message";
+  }
+}
+
+async function loadTransactionsForSelectedParcel() {
+  if (!selectedItem || !selectedData) return;
+  transactionController?.abort();
+  transactionController = new AbortController();
+  elements.loadTransactions.disabled = true;
+  elements.loadTransactions.textContent = "조회 중…";
+  elements.transactionResults.hidden = true;
+  elements.transactionMessage.textContent = "";
+  elements.transactionMessage.className = "transaction-message";
+  elements.transactionProgress.hidden = false;
+  elements.transactionProgressValue.textContent = "0 / 24개월";
+  elements.transactionProgressBar.style.width = "0%";
+  try {
+    const result = await requestTransactions({
+      type: selectedTransactionType,
+      pnu: selectedItem.pnu,
+      parcelAddress: selectedData.address || selectedItem.parcelAddress || selectedItem.primaryAddress,
+      selectedArea: selectedData.area,
+      signal: transactionController.signal,
+      onProgress: ({completed, total, percent}) => {
+        elements.transactionProgressValue.textContent = `${completed} / ${total}개월`;
+        elements.transactionProgressBar.style.width = `${percent}%`;
+      }
+    });
+    renderTransactionResult(result);
+  } catch (error) {
+    if (error.name === "AbortError") return;
+    elements.transactionMessage.textContent = error.message;
+    elements.transactionMessage.className = "transaction-message error";
+  } finally {
+    elements.transactionProgress.hidden = true;
+    elements.loadTransactions.disabled = !hasMolitApiKey();
+    elements.loadTransactions.textContent = "최근 24개월 조회";
+  }
+}
+
+async function copyAuctionAddress() {
+  const address = elements.copyAuctionAddress.dataset.address || "";
+  if (!address) return;
+  try {
+    await navigator.clipboard.writeText(address);
+  } catch {
+    const field = document.createElement("textarea");
+    field.value = address;
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    document.body.append(field);
+    field.select();
+    document.execCommand("copy");
+    field.remove();
+  }
+  elements.copyAuctionAddress.textContent = "복사됨";
+  window.setTimeout(() => { elements.copyAuctionAddress.textContent = "주소 복사"; }, 1600);
+}
+
 function renderZoneList(target, zones) {
   target.replaceChildren();
   if (!zones?.length) {
@@ -415,6 +639,7 @@ function renderSummary(data, item) {
   renderZoneList(elements.nationalPlan, data.nationalPlan);
   renderZoneList(elements.otherLaws, [...(data.otherLaws || []), ...(data.decree || [])]);
   renderRestrictions(data.restrictions);
+  resetTransactionPanel(item, data);
   elements.officialLink.href = data.officialUrl;
   elements.viewMap.hidden = !(Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)));
   elements.summary.hidden = false;
@@ -805,6 +1030,12 @@ elements.mapSelectParcel.addEventListener("click", () => {
 document.querySelectorAll("[data-map-layer]").forEach((button) => {
   button.addEventListener("click", () => setMapLayer(button.dataset.mapLayer));
 });
+elements.transactionTypeTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-transaction-type]");
+  if (button) updateTransactionType(button.dataset.transactionType);
+});
+elements.loadTransactions.addEventListener("click", () => void loadTransactionsForSelectedParcel());
+elements.copyAuctionAddress.addEventListener("click", () => void copyAuctionAddress());
 
 elements.form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -852,6 +1083,7 @@ document.addEventListener("pointerdown", (event) => {
 
 elements.searchAgain.addEventListener("click", () => {
   detailController?.abort();
+  transactionController?.abort();
   closeMap();
   closeReportViewer();
   selectedItem = null;
