@@ -4,6 +4,7 @@ import {
   PROPERTY_DOCUMENT_URLS,
   buildBuildingLifecycleUrl,
   buildDistrictPlanUrl,
+  buildEumLandUseUrl,
   buildingPostFields,
   hasDistrictPlan,
   landRegisterPostFields,
@@ -52,6 +53,19 @@ test("건축물 생애이력 URL은 대장용 PNU와 건물 식별자를 사용�
   assert.equal(target.searchParams.get("bldrgstPk"), "41192-7552");
   assert.equal(target.searchParams.get("searchPnu"), "4119210200001000001");
   assert.equal(target.searchParams.get("searchType"), "B");
+});
+
+test("토지이음 URL은 PNU의 행정구역·필지 번호를 공식 조회 파라미터로 분해한다", () => {
+  const target = new URL(buildEumLandUseUrl("4119210200101000001"));
+  assert.equal(target.origin, "https://www.eum.go.kr");
+  assert.equal(target.searchParams.get("selSido"), "41");
+  assert.equal(target.searchParams.get("selSgg"), "192");
+  assert.equal(target.searchParams.get("selUmd"), "0102");
+  assert.equal(target.searchParams.get("selRi"), "00");
+  assert.equal(target.searchParams.get("landGbn"), "1");
+  assert.equal(target.searchParams.get("bobn"), "0100");
+  assert.equal(target.searchParams.get("bubn"), "0001");
+  assert.equal(target.searchParams.get("pnu"), "4119210200101000001");
 });
 
 test("서울 필지에 지구단위계획 지정이 있을 때만 서울 계획 URL을 제공한다", () => {

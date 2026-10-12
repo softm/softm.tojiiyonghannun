@@ -76,6 +76,7 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     assert.match(viewer, /data-document-tab="building"/);
     assert.match(viewer, /data-document-tab="landRegister"/);
     assert.match(viewer, /data-document-tab="landUse"/);
+    assert.match(viewer, /data-document-tab="eum"/);
     assert.match(viewer, /data-document-tab="districtPlan"/);
     assert.match(viewer, /data-document-tab="lifecycle"/);
   });
