@@ -34,7 +34,7 @@ const runtimeConfig = {
 fs.writeFileSync(
   path.join(output, "runtime-config.js"),
   `globalThis.__TOJI_RUNTIME_CONFIG__ = Object.freeze(${JSON.stringify(runtimeConfig)});\n`,
-  {encoding: "utf8", mode: 0o600}
+  {encoding: "utf8", mode: 0o644}
 );
 
 console.log(`GitHub Pages artifact created: ${publicFiles.length + 1} files`);
