@@ -49,6 +49,38 @@ test("실거래·경매 UI와 브라우저 런타임 설정을 제공한다", as
   });
 });
 
+test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제공한다", async () => {
+  const fetchImpl = async (url) => {
+    const target = new URL(url);
+    assert.equal(target.pathname, "/ned/data/getBuildingUse");
+    assert.equal(target.searchParams.get("pnu"), pnu);
+    return mockResponse({buildingUses: {field: {
+      buldIdntfcNo: "2714000012345",
+      agbldgSeCode: "1",
+      buldDongNm: "101동",
+      mainPrposCodeNm: "공동주택",
+      buldTotar: "4200.5",
+      buldMainAtachSeCode: "0"
+    }}});
+  };
+  await withServer(fetchImpl, async (baseUrl) => {
+    const apiResponse = await fetch(`${baseUrl}/api/buildings?pnu=${pnu}`);
+    const payload = await apiResponse.json();
+    assert.equal(apiResponse.status, 200);
+    assert.equal(payload.items[0].name, "101동");
+    assert.equal(payload.items[0].isMain, true);
+
+    const home = await (await fetch(`${baseUrl}/`)).text();
+    const viewer = await (await fetch(`${baseUrl}/building-ledger.html`)).text();
+    assert.match(home, /id="openPropertyDocuments"/);
+    assert.match(viewer, /data-document-tab="building"/);
+    assert.match(viewer, /data-document-tab="landRegister"/);
+    assert.match(viewer, /data-document-tab="landUse"/);
+    assert.match(viewer, /data-document-tab="districtPlan"/);
+    assert.match(viewer, /data-document-tab="lifecycle"/);
+  });
+});
+
 test("지도 화면은 현재 위치 기반 필지 조회 동작을 제공한다", async () => {
   await withServer(fetch, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/`);
