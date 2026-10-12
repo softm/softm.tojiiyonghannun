@@ -17,6 +17,7 @@ const publicFiles = [
   "property-documents.js",
   "report-export.js",
   "report-model.js",
+  "share-model.js",
   "transaction-api.js",
   "transaction-model.js",
   "styles.css",
