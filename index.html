@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261012-3" />
+    <link rel="stylesheet" href="./styles.css?v=20261012-4" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -44,7 +44,13 @@
             </div>
             <div class="history-autocomplete__list" id="historyAutocompleteList" role="listbox" aria-label="최근 조회 필지 자동완성"></div>
           </div>
-          <p class="search-hint">도로명, 지번, 산번지 또는 건물명으로 검색할 수 있어요.</p>
+          <div class="search-support">
+            <p class="search-hint">도로명, 지번, 산번지 또는 건물명으로 검색할 수 있어요.</p>
+            <button class="map-search-trigger" id="findOnMap" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/><circle cx="15" cy="11" r="2.2"/></svg>
+              지도로 찾기
+            </button>
+          </div>
         </form>
 
         <section class="recent-history" id="recentHistory" aria-labelledby="recentHistoryTitle" hidden>
@@ -98,6 +104,20 @@
           <span class="reference-badge">참고용</span>
         </div>
 
+        <div class="summary-actions summary-actions--primary" aria-label="선택한 필지 주요 기능">
+          <a class="primary-action" id="officialLink" href="https://www.eum.go.kr/" target="_blank" rel="noopener noreferrer">
+            토지이음에서 원문 보기 <span aria-hidden="true">↗</span>
+          </a>
+          <button class="map-action" id="viewMap" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+            지도에서 보기
+          </button>
+          <button class="download-action" id="downloadReport" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
+            PDF 보고서 보기
+          </button>
+        </div>
+
         <dl class="fact-grid" id="factGrid"></dl>
 
         <div class="summary-grid">
@@ -115,18 +135,7 @@
           </article>
         </div>
 
-        <div class="summary-actions">
-          <a class="primary-action" id="officialLink" href="https://www.eum.go.kr/" target="_blank" rel="noopener noreferrer">
-            토지이음에서 원문 보기 <span aria-hidden="true">↗</span>
-          </a>
-          <button class="map-action" id="viewMap" type="button" hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
-            지도에서 보기
-          </button>
-          <button class="download-action" id="downloadReport" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
-            PDF 보고서 보기
-          </button>
+        <div class="summary-actions summary-actions--secondary">
           <button class="secondary-action" id="searchAgain" type="button">다른 주소 검색</button>
         </div>
         <p class="legal-notice">이 화면은 공개된 정보를 이해하기 쉽게 정리한 참고자료이며 공식 확인서가 아닙니다. 인허가·거래 등 법적 판단이 필요한 경우 토지이음 원문과 관계기관을 통해 다시 확인하세요.</p>
@@ -223,7 +232,7 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
-    <script type="module" src="./report-export.js?v=20261012-3"></script>
-    <script type="module" src="./app.js?v=20261012-3"></script>
+    <script type="module" src="./report-export.js?v=20261012-4"></script>
+    <script type="module" src="./app.js?v=20261012-4"></script>
   </body>
 </html>

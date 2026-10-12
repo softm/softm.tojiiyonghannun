@@ -1,12 +1,12 @@
-import {buildReportModel} from "./report-model.js?v=20261012-3";
-import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-3";
+import {buildReportModel} from "./report-model.js?v=20261012-4";
+import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-4";
 import {
   requestAddressSearch,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js?v=20261012-3";
+} from "./browser-api.js?v=20261012-4";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;
@@ -52,6 +52,7 @@ const elements = {
   otherLaws: $("#otherLaws"),
   restrictions: $("#restrictions"),
   officialLink: $("#officialLink"),
+  findOnMap: $("#findOnMap"),
   viewMap: $("#viewMap"),
   mapDialog: $("#mapDialog"),
   mapDialogTitle: $("#mapDialogTitle"),
@@ -561,24 +562,31 @@ async function chooseMapPoint([longitude, latitude]) {
   }
 }
 
-function openMap() {
-  const longitude = Number(selectedItem?.longitude);
-  const latitude = Number(selectedItem?.latitude);
-  if (!selectedItem || !Number.isFinite(longitude) || !Number.isFinite(latitude)) {
-    setStatus("선택한 필지의 지도 좌표가 없습니다.", "error");
-    return;
-  }
-  elements.mapDialogTitle.textContent = "지도에서 필지를 찾아보세요";
+function openMap({initialItem = null, query = ""} = {}) {
+  const longitude = Number(initialItem?.longitude);
+  const latitude = Number(initialItem?.latitude);
+  const hasInitialItem = initialItem && Number.isFinite(longitude) && Number.isFinite(latitude);
+  elements.mapDialogTitle.textContent = hasInitialItem ? "선택한 필지를 지도에서 확인하세요" : "지도로 필지를 찾아보세요";
   elements.mapDialogAddress.textContent = "주소·건물명 검색 또는 지도 클릭으로 선택";
   elements.mapError.hidden = true;
   elements.mapSearchResults.hidden = true;
-  elements.mapSearchInput.value = "";
+  elements.mapSearchInput.value = query;
+  mapSelectedItem = null;
   setMapLoading(!parcelMap);
   elements.mapDialog.showModal();
   ensureParcelMap();
   window.setTimeout(() => {
     parcelMap.updateSize();
-    void loadMapCandidate(selectedItem);
+    mapSelectionSource.clear();
+    mapMarkerSource.clear();
+    setMapSelectionCopy(null);
+    if (hasInitialItem) {
+      void loadMapCandidate(initialItem);
+    } else if (query.length >= 2) {
+      void searchInMap(query);
+    } else {
+      elements.mapSearchInput.focus();
+    }
   }, 0);
 }
 
@@ -697,7 +705,11 @@ elements.reportDialog.addEventListener("close", () => {
   reportObjectUrl = "";
 });
 
-elements.viewMap.addEventListener("click", openMap);
+elements.findOnMap.addEventListener("click", () => {
+  closeHistoryAutocomplete();
+  openMap({query: elements.input.value.replace(/\s+/g, " ").trim()});
+});
+elements.viewMap.addEventListener("click", () => openMap({initialItem: selectedItem}));
 elements.closeMap.addEventListener("click", closeMap);
 elements.mapDialog.addEventListener("click", (event) => {
   if (event.target === elements.mapDialog) closeMap();
