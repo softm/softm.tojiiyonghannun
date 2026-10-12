@@ -199,7 +199,8 @@ h1 em { color: var(--green); font-style: normal; }
 .map-dialog__close { width: 40px; height: 40px; flex: 0 0 auto; border: 1px solid #d6e1db; border-radius: 12px; background: #fff; color: var(--ink-soft); font-size: 25px; line-height: 1; cursor: pointer; }
 .map-dialog__close:hover, .map-dialog__close:focus-visible { border-color: var(--green); outline: none; color: var(--green); }
 .map-dialog__toolbar { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: #f8faf8; }
-.map-search { min-width: 0; display: flex; flex: 1; gap: 7px; }
+.map-search-cluster { position: relative; min-width: 0; flex: 1; }
+.map-search { min-width: 0; display: flex; width: 100%; gap: 7px; }
 .map-search input { min-width: 0; flex: 1; height: 42px; padding: 0 14px; border: 1px solid #cbd9d2; border-radius: 11px; outline: none; background: #fff; color: var(--ink); font: inherit; font-size: 13px; }
 .map-search input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(23,107,84,.1); }
 .map-search button, .map-select-action { border: 0; border-radius: 11px; background: var(--green); color: #fff; font-size: 12px; font-weight: 850; cursor: pointer; }
@@ -208,7 +209,7 @@ h1 em { color: var(--green); font-style: normal; }
 .map-mode-switch { display: flex; gap: 3px; padding: 3px; border: 1px solid #d5e0da; border-radius: 11px; background: #fff; }
 .map-mode-switch button { min-width: 54px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-soft); font-size: 11px; font-weight: 800; cursor: pointer; }
 .map-mode-switch button.active { background: var(--green); color: #fff; }
-.map-search-results { position: absolute; z-index: 24; top: 137px; left: 14px; width: min(560px, calc(100% - 28px)); max-height: 280px; overflow-y: auto; padding: 6px; border: 1px solid #cad9d1; border-radius: 14px; background: rgba(255,255,255,.98); box-shadow: 0 18px 50px rgba(12,45,35,.2); }
+.map-search-results { position: absolute; z-index: 24; top: calc(100% + 8px); left: 0; width: min(560px, 100%); max-height: 280px; overflow-y: auto; padding: 6px; border: 1px solid #cad9d1; border-radius: 14px; background: rgba(255,255,255,.98); box-shadow: 0 18px 50px rgba(12,45,35,.2); }
 .map-search-results[hidden] { display: none; }
 .map-search-result { width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 11px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .map-search-result:hover, .map-search-result:focus-visible { outline: none; background: #eef7f2; }
@@ -324,7 +325,8 @@ footer a:hover, footer a:focus-visible { text-decoration: underline; }
   .map-dialog__head { padding: 15px 16px 13px; }
   .map-dialog__head h2 { font-size: 18px; }
   .map-dialog__toolbar { align-items: stretch; flex-direction: column; padding: 9px; }
-  .map-search-results { top: 184px; left: 9px; width: calc(100% - 18px); }
+  .map-search-cluster { width: 100%; }
+  .map-search-results { width: 100%; }
   .map-mode-switch button { flex: 1; }
   .map-dialog__canvas { min-height: 300px; }
   .map-click-guide { top: 10px; max-width: calc(100% - 90px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
