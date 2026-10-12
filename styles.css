@@ -128,6 +128,7 @@ h1 em { color: var(--green); font-style: normal; }
 .lookup-skeleton { display: grid; grid-template-columns: 1.4fr .8fr .8fr 1fr; gap: 10px; margin-top: 24px; }
 .lookup-skeleton span { height: 48px; border-radius: 10px; background: linear-gradient(100deg, #eef2ef 20%, #f8faf8 42%, #eef2ef 64%); background-size: 220% 100%; animation: shimmer 1.35s ease-in-out infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes location-pulse { from { opacity: .35; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
 @keyframes shimmer { to { background-position-x: -220%; } }
 
 .summary { margin: 56px auto 0; padding: 42px; border: 1px solid var(--line); border-radius: 28px; background: var(--paper); box-shadow: var(--shadow); }
@@ -206,6 +207,12 @@ h1 em { color: var(--green); font-style: normal; }
 .map-search button, .map-select-action { border: 0; border-radius: 11px; background: var(--green); color: #fff; font-size: 12px; font-weight: 850; cursor: pointer; }
 .map-search button { min-width: 72px; height: 42px; }
 .map-search button:disabled { cursor: wait; opacity: .6; }
+.map-toolbar-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.map-current-location { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 12px; border: 1px solid #b9cec4; border-radius: 11px; background: #fff; color: var(--green); font-size: 11px; font-weight: 850; white-space: nowrap; cursor: pointer; }
+.map-current-location:hover, .map-current-location:focus-visible { border-color: var(--green); outline: none; background: var(--mint); }
+.map-current-location:disabled { cursor: wait; opacity: .7; }
+.map-current-location svg { width: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.map-current-location.is-loading svg { animation: location-pulse .9s ease-in-out infinite alternate; }
 .map-mode-switch { display: flex; gap: 3px; padding: 3px; border: 1px solid #d5e0da; border-radius: 11px; background: #fff; }
 .map-mode-switch button { min-width: 54px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-soft); font-size: 11px; font-weight: 800; cursor: pointer; }
 .map-mode-switch button.active { background: var(--green); color: #fff; }
@@ -329,6 +336,9 @@ footer a:hover, footer a:focus-visible { text-decoration: underline; }
   .map-dialog__toolbar { align-items: stretch; flex-direction: column; padding: 9px; }
   .map-search-cluster { width: 100%; }
   .map-search-results { width: 100%; }
+  .map-toolbar-actions { width: 100%; }
+  .map-current-location { flex: 1; }
+  .map-mode-switch { flex: 1; }
   .map-mode-switch button { flex: 1; }
   .map-dialog__canvas { min-height: 300px; }
   .map-click-guide { top: 10px; max-width: calc(100% - 90px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

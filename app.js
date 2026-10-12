@@ -1,12 +1,12 @@
-import {buildReportModel} from "./report-model.js?v=20261012-6";
-import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-6";
+import {buildReportModel} from "./report-model.js?v=20261012-7";
+import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-7";
 import {
   requestAddressSearch,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js?v=20261012-6";
+} from "./browser-api.js?v=20261012-7";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;
@@ -65,6 +65,7 @@ const elements = {
   mapSearchInput: $("#mapSearchInput"),
   mapSearchButton: $("#mapSearchButton"),
   mapSearchResults: $("#mapSearchResults"),
+  currentLocation: $("#currentLocation"),
   mapSelectionTitle: $("#mapSelectionTitle"),
   mapSelectionHint: $("#mapSelectionHint"),
   mapSelectParcel: $("#mapSelectParcel"),
@@ -102,6 +103,7 @@ let mapMarkerSource;
 let mapSelectedItem;
 let mapSearchController;
 let mapClickController;
+let mapLocationRequestId = 0;
 
 const mapGeoJson = new GeoJSON();
 const mapBoundaryStyle = [
@@ -562,6 +564,65 @@ async function chooseMapPoint([longitude, latitude]) {
   }
 }
 
+function currentLocationErrorMessage(error) {
+  if (error?.code === 1) return "위치 권한이 꺼져 있습니다. 브라우저 설정에서 이 사이트의 위치 권한을 허용해 주세요.";
+  if (error?.code === 2) return "현재 위치를 확인할 수 없습니다. GPS 또는 네트워크 연결을 확인해 주세요.";
+  if (error?.code === 3) return "현재 위치 확인 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.";
+  return "현재 위치를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
+function setCurrentLocationButton(loading) {
+  elements.currentLocation.disabled = loading;
+  elements.currentLocation.classList.toggle("is-loading", loading);
+  elements.currentLocation.setAttribute("aria-busy", String(loading));
+  elements.currentLocation.querySelector("span").textContent = loading ? "위치 확인 중" : "현재 위치";
+}
+
+async function locateCurrentPosition() {
+  if (!navigator.geolocation) {
+    elements.mapSelectionTitle.textContent = "현재 위치를 사용할 수 없어요";
+    elements.mapSelectionHint.textContent = "이 브라우저는 위치정보 기능을 지원하지 않습니다.";
+    return;
+  }
+
+  const requestId = ++mapLocationRequestId;
+  mapSelectedItem = null;
+  elements.mapSearchResults.hidden = true;
+  elements.mapSelectionTitle.textContent = "현재 위치를 확인하고 있어요";
+  elements.mapCoordinate.textContent = "";
+  elements.mapSelectionHint.textContent = "위치 권한을 허용하면 현재 지점의 필지를 찾아드립니다.";
+  elements.mapSelectParcel.disabled = true;
+  setCurrentLocationButton(true);
+
+  navigator.geolocation.getCurrentPosition(async ({coords}) => {
+    if (requestId !== mapLocationRequestId || !elements.mapDialog.open) return;
+    const longitude = Number(coords.longitude);
+    const latitude = Number(coords.latitude);
+    if (!(longitude >= 124 && longitude <= 132 && latitude >= 33 && latitude <= 39)) {
+      elements.mapSelectionTitle.textContent = "현재 위치가 국내 범위를 벗어났어요";
+      elements.mapSelectionHint.textContent = "토지 필지 조회는 대한민국 내 위치에서만 이용할 수 있습니다.";
+      setCurrentLocationButton(false);
+      return;
+    }
+
+    parcelMap.getView().animate({center: fromLonLat([longitude, latitude]), zoom: 17, duration: 420});
+    mapSelectionSource.clear();
+    mapMarkerSource.clear();
+    mapMarkerSource.addFeature(new Feature({geometry: new Point(fromLonLat([longitude, latitude]))}));
+    elements.mapDialogTitle.textContent = "현재 위치의 필지를 확인하세요";
+    elements.mapDialogAddress.textContent = "기기 위치정보를 기준으로 조회했습니다.";
+    await chooseMapPoint([longitude, latitude]);
+    if (requestId === mapLocationRequestId) setCurrentLocationButton(false);
+  }, (error) => {
+    if (requestId !== mapLocationRequestId || !elements.mapDialog.open) return;
+    elements.mapSelectionTitle.textContent = "현재 위치를 확인하지 못했어요";
+    elements.mapCoordinate.textContent = "";
+    elements.mapSelectionHint.textContent = currentLocationErrorMessage(error);
+    elements.mapSelectParcel.disabled = true;
+    setCurrentLocationButton(false);
+  }, {enableHighAccuracy: true, timeout: 12000, maximumAge: 30000});
+}
+
 function openMap({initialItem = null, query = ""} = {}) {
   const longitude = Number(initialItem?.longitude);
   const latitude = Number(initialItem?.latitude);
@@ -591,6 +652,8 @@ function openMap({initialItem = null, query = ""} = {}) {
 }
 
 function closeMap() {
+  mapLocationRequestId += 1;
+  setCurrentLocationButton(false);
   mapSearchController?.abort();
   mapClickController?.abort();
   elements.mapSearchResults.hidden = true;
@@ -715,6 +778,8 @@ elements.mapDialog.addEventListener("click", (event) => {
   if (event.target === elements.mapDialog) closeMap();
 });
 elements.mapDialog.addEventListener("close", () => {
+  mapLocationRequestId += 1;
+  setCurrentLocationButton(false);
   mapSearchController?.abort();
   mapClickController?.abort();
   elements.mapSearchResults.hidden = true;
@@ -729,6 +794,7 @@ elements.mapSearchForm.addEventListener("submit", (event) => {
   }
   void searchInMap(query);
 });
+elements.currentLocation.addEventListener("click", () => void locateCurrentPosition());
 elements.mapSelectParcel.addEventListener("click", () => {
   if (!mapSelectedItem) return;
   const item = mapSelectedItem;
