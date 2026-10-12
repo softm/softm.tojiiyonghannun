@@ -22,6 +22,16 @@ async function withServer(fetchImpl, callback) {
   }
 }
 
+test("보고서 미리보기는 모바일 호환 HTML 컨테이너를 사용한다", async () => {
+  await withServer(fetch, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /id="reportPreview"/);
+    assert.doesNotMatch(html, /id="reportFrame"/);
+  });
+});
+
 test("주소 검색 API가 두 검색 범주를 합쳐 반환한다", async () => {
   let calls = 0;
   const fetchImpl = async (url) => {
