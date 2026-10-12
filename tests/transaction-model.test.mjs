@@ -7,6 +7,7 @@ import {
   parcelIdentity,
   parseTransactionXml,
   pruneCacheRecords,
+  recommendTransactionType,
   recentMonths,
   runWithConcurrency
 } from "../transaction-model.js";
@@ -35,6 +36,18 @@ test("최근 24개월을 현재 월부터 역순으로 만든다", () => {
   assert.equal(months.length, 24);
   assert.equal(months[0], "202610");
   assert.equal(months.at(-1), "202411");
+});
+
+test("검색 명칭과 건축물 주용도로 기본 실거래 유형을 선택한다", () => {
+  assert.equal(recommendTransactionType({buildingName: "옥길한신더휴"}), "apartment");
+  assert.equal(recommendTransactionType({buildingName: "옥길한신더휴", buildings: []}), "land");
+  assert.equal(recommendTransactionType({buildings: [{use: "공동주택(아파트)"}]}), "apartment");
+  assert.equal(recommendTransactionType({buildings: [{use: "업무시설(오피스텔)"}]}), "officetel");
+  assert.equal(recommendTransactionType({buildings: [{use: "연립주택"}]}), "rowHouse");
+  assert.equal(recommendTransactionType({buildings: [{use: "단독주택(다가구주택)"}]}), "detached");
+  assert.equal(recommendTransactionType({buildings: [{use: "제2종근린생활시설"}]}), "commercial");
+  assert.equal(recommendTransactionType({buildings: [{use: "창고시설"}]}), "factory");
+  assert.equal(recommendTransactionType({}), "land");
 });
 
 test("7개 매매 API XML을 공통 거래 모델로 정규화한다", () => {

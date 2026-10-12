@@ -9,9 +9,16 @@ import {
   hasDistrictPlan,
   landRegisterPostFields,
   landUsePostFields,
+  normalizePropertyDocumentTab,
   normalizeBuildingRecords,
   parcelDocumentIdentity
 } from "../property-documents.js";
+
+test("통합 보기 시작 탭은 지원 문서만 허용한다", () => {
+  assert.equal(normalizePropertyDocumentTab("eum"), "eum");
+  assert.equal(normalizePropertyDocumentTab("landRegister"), "landRegister");
+  assert.equal(normalizePropertyDocumentTab("unknown"), "building");
+});
 
 const ordinaryPnu = "4119410400101680008";
 const mountainPnu = "4119410400201680008";
