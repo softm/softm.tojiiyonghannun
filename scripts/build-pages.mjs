@@ -1,0 +1,40 @@
+import fs from "node:fs";
+import path from "node:path";
+import {fileURLToPath} from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const output = path.join(root, "dist");
+const publicFiles = [
+  "index.html",
+  "privacy.html",
+  "app.js",
+  "browser-api.js",
+  "history-model.js",
+  "parcel-map.js",
+  "report-export.js",
+  "report-model.js",
+  "transaction-api.js",
+  "transaction-model.js",
+  "styles.css",
+  "CNAME",
+  "app-ads.txt"
+];
+
+fs.rmSync(output, {recursive: true, force: true});
+fs.mkdirSync(output, {recursive: true});
+
+for (const relativePath of publicFiles) {
+  const source = path.join(root, relativePath);
+  if (fs.existsSync(source)) fs.copyFileSync(source, path.join(output, relativePath));
+}
+
+const runtimeConfig = {
+  molitApiKey: String(process.env.MOLIT_API_KEY || "").trim()
+};
+fs.writeFileSync(
+  path.join(output, "runtime-config.js"),
+  `globalThis.__TOJI_RUNTIME_CONFIG__ = Object.freeze(${JSON.stringify(runtimeConfig)});\n`,
+  {encoding: "utf8", mode: 0o600}
+);
+
+console.log(`GitHub Pages artifact created: ${publicFiles.length + 1} files`);
