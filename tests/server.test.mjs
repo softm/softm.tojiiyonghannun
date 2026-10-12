@@ -75,9 +75,12 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     const home = await (await fetch(`${baseUrl}/`)).text();
     const viewer = await (await fetch(`${baseUrl}/building-ledger.html`)).text();
     assert.match(home, /id="openPropertyDocuments"/);
+    assert.match(home, /id="propertyDocumentsLink"/);
     assert.match(home, /id="landRegisterLink"/);
     assert.match(home, /id="landUseLink"/);
     assert.match(home, /id="officialLink"/);
+    assert.match(home, /id="shareParcel"/);
+    assert.match(home, />건축물대장 보기/);
     assert.match(viewer, /data-document-tab="building"/);
     assert.match(viewer, /data-document-tab="landRegister"/);
     assert.match(viewer, /data-document-tab="landUse"/);
