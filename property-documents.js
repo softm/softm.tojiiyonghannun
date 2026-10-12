@@ -2,6 +2,7 @@ export const PROPERTY_DOCUMENT_URLS = Object.freeze({
   building: "https://irts.molit.go.kr/usr/estate/cntc/kab/RtecsBildRegstrInfoPreview.do",
   landRegister: "https://irts.molit.go.kr/usr/estate/cntc/kab/RtecsTBookOfLandRegstrPreview.do",
   landUse: "https://irts.molit.go.kr/usr/estate/cntc/kab/RtecsLandUseOfLandRegstrPreview.do",
+  eum: "https://www.eum.go.kr/web/ar/lu/luLandDet.jsp",
   districtPlan: "https://urban.seoul.go.kr/view/map/mapRegInfo.pop",
   lifecycle: "https://blcm.go.kr/lim/bldSumInfo/BldSumInfoView.do"
 });
@@ -67,6 +68,27 @@ export function landRegisterPostFields(pnu) {
 export function landUsePostFields(pnu) {
   const identity = parcelDocumentIdentity(pnu);
   return {pnuCode: identity.pnu, jibunBonbun: identity.mainNumber, jibunBubun: identity.subNumber};
+}
+
+export function buildEumLandUseUrl(pnu) {
+  const identity = parcelDocumentIdentity(pnu);
+  const url = new URL(PROPERTY_DOCUMENT_URLS.eum);
+  url.search = new URLSearchParams({
+    selSido: identity.pnu.slice(0, 2),
+    selSgg: identity.pnu.slice(2, 5),
+    selUmd: identity.pnu.slice(5, 8).padStart(4, "0"),
+    selRi: identity.pnu.slice(8, 10),
+    landGbn: identity.pnu[10],
+    bobn: identity.mainNumber,
+    bubn: identity.subNumber,
+    pnu: identity.pnu,
+    scale: "",
+    isNoScr: "script",
+    chk: "0",
+    mode: "search",
+    selGbn: "umd"
+  }).toString();
+  return url.toString();
 }
 
 export function buildBuildingLifecycleUrl(pnu, buildingId) {

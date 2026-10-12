@@ -6,7 +6,7 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#173f37" />
     <title>건축물·토지대장 통합 보기 | 토지이용한눈</title>
-    <link rel="stylesheet" href="./building-ledger.css?v=20261012-9" />
+    <link rel="stylesheet" href="./building-ledger.css?v=20261012-10" />
   </head>
   <body>
     <header class="viewer-header">
@@ -28,6 +28,7 @@
       <button class="active" id="tabBuilding" type="button" role="tab" aria-selected="true" aria-controls="panelBuilding" data-document-tab="building">건축물대장</button>
       <button id="tabLandRegister" type="button" role="tab" aria-selected="false" aria-controls="panelLandRegister" data-document-tab="landRegister">토지대장</button>
       <button id="tabLandUse" type="button" role="tab" aria-selected="false" aria-controls="panelLandUse" data-document-tab="landUse">토지이용계획확인원</button>
+      <button id="tabEum" type="button" role="tab" aria-selected="false" aria-controls="panelEum" data-document-tab="eum">토지이음</button>
       <button id="tabDistrictPlan" type="button" role="tab" aria-selected="false" aria-controls="panelDistrictPlan" data-document-tab="districtPlan" hidden>지구단위계획</button>
       <button id="tabLifecycle" type="button" role="tab" aria-selected="false" aria-controls="panelLifecycle" data-document-tab="lifecycle" hidden>건축물 생애이력</button>
     </nav>
@@ -62,6 +63,13 @@
         </div>
       </section>
 
+      <section class="document-panel" id="panelEum" role="tabpanel" aria-labelledby="tabEum" data-document-panel="eum" hidden>
+        <div class="frame-shell">
+          <div class="frame-status" id="eumStatus" role="status">토지이음 토지이용계획 열람 화면을 불러오고 있어요.</div>
+          <iframe id="eumFrame" title="토지이음 토지이용계획 열람" loading="lazy"></iframe>
+        </div>
+      </section>
+
       <section class="document-panel" id="panelDistrictPlan" role="tabpanel" aria-labelledby="tabDistrictPlan" data-document-panel="districtPlan" hidden>
         <div class="frame-shell">
           <div class="frame-status" id="districtPlanStatus" role="status">서울 지구단위계획 상세정보를 불러오고 있어요.</div>
@@ -87,6 +95,6 @@
       <strong>참고용 공개정보</strong>
       <span>원문은 외부 기관이 제공하며 발급 문서가 아닙니다. 법적 증명이 필요하면 정부24·세움터 등 공식 발급 절차를 이용하세요.</span>
     </footer>
-    <script type="module" src="./building-ledger.js?v=20261012-9"></script>
+    <script type="module" src="./building-ledger.js?v=20261012-10"></script>
   </body>
 </html>

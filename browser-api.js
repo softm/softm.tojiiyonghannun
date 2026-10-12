@@ -1,4 +1,4 @@
-import {normalizeBuildingRecords} from "./property-documents.js?v=20261012-9";
+import {normalizeBuildingRecords} from "./property-documents.js?v=20261012-10";
 
 const PRODUCTION_HOST = "tojiiyonghannun.designboard.net";
 // VWorld 브라우저 키는 등록된 운영 도메인에서만 사용하는 공개 클라이언트 식별자다.

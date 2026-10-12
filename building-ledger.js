@@ -1,13 +1,14 @@
-import {requestBuildingRecords} from "./browser-api.js?v=20261012-9";
+import {requestBuildingRecords} from "./browser-api.js?v=20261012-10";
 import {
   PROPERTY_DOCUMENT_URLS,
   buildBuildingLifecycleUrl,
   buildDistrictPlanUrl,
+  buildEumLandUseUrl,
   buildingPostFields,
   landRegisterPostFields,
   landUsePostFields,
   parcelDocumentIdentity
-} from "./property-documents.js?v=20261012-9";
+} from "./property-documents.js?v=20261012-10";
 
 const params = new URLSearchParams(window.location.search);
 const pnu = String(params.get("pnu") || "");
@@ -38,6 +39,7 @@ const frameConfig = {
   building: {frame: $("#buildingFrame"), status: $("#buildingStatus")},
   landRegister: {frame: $("#landRegisterFrame"), status: $("#landRegisterStatus")},
   landUse: {frame: $("#landUseFrame"), status: $("#landUseStatus")},
+  eum: {frame: $("#eumFrame"), status: $("#eumStatus")},
   districtPlan: {frame: $("#districtPlanFrame"), status: $("#districtPlanStatus")},
   lifecycle: {frame: $("#lifecycleFrame"), status: $("#lifecycleStatus")}
 };
@@ -190,6 +192,10 @@ function loadTab(type) {
   if (loadedTabs.has(type)) return;
   if (type === "landRegister") submitPostToFrame(type, PROPERTY_DOCUMENT_URLS.landRegister, landRegisterPostFields(pnu));
   if (type === "landUse") submitPostToFrame(type, PROPERTY_DOCUMENT_URLS.landUse, landUsePostFields(pnu));
+  if (type === "eum") {
+    showFrameLoading(type);
+    frameConfig[type].frame.src = buildEumLandUseUrl(pnu);
+  }
   if (type === "districtPlan") {
     showFrameLoading(type);
     frameConfig[type].frame.src = buildDistrictPlanUrl(pnu);
@@ -227,6 +233,7 @@ function openActiveDocument() {
   }
   if (activeTab === "landRegister") submitPost(PROPERTY_DOCUMENT_URLS.landRegister, landRegisterPostFields(pnu), "_blank");
   if (activeTab === "landUse") submitPost(PROPERTY_DOCUMENT_URLS.landUse, landUsePostFields(pnu), "_blank");
+  if (activeTab === "eum") window.open(buildEumLandUseUrl(pnu), "_blank", "noopener,noreferrer");
   if (activeTab === "districtPlan") window.open(buildDistrictPlanUrl(pnu), "_blank", "noopener,noreferrer");
   if (activeTab === "lifecycle") window.open(buildBuildingLifecycleUrl(pnu, buildings[selectedBuildingIndex]?.id), "_blank", "noopener,noreferrer");
 }

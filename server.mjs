@@ -409,7 +409,7 @@ function serveStatic(response, pathname) {
   response.writeHead(200, {
     "Content-Type": mimeTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream",
     "Cache-Control": "no-cache",
-    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; img-src 'self' data: blob: https://xdworld.vworld.kr https://api.vworld.kr; connect-src 'self' https://xdworld.vworld.kr https://api.vworld.kr https://www.eum.go.kr https://apis.data.go.kr; frame-src 'self' blob: https://irts.molit.go.kr https://urban.seoul.go.kr https://blcm.go.kr; base-uri 'none'; form-action 'self' https://www.eum.go.kr https://irts.molit.go.kr; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://api.vworld.kr; img-src 'self' data: blob: https://xdworld.vworld.kr https://api.vworld.kr; connect-src 'self' https://xdworld.vworld.kr https://api.vworld.kr https://www.eum.go.kr https://apis.data.go.kr; frame-src 'self' blob: https://irts.molit.go.kr https://www.eum.go.kr https://urban.seoul.go.kr https://blcm.go.kr; base-uri 'none'; form-action 'self' https://www.eum.go.kr https://irts.molit.go.kr; frame-ancestors 'none'",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff"
   });
