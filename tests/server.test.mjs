@@ -32,6 +32,23 @@ test("보고서 미리보기는 모바일 호환 HTML 컨테이너를 사용한�
   });
 });
 
+test("실거래·경매 UI와 브라우저 런타임 설정을 제공한다", async () => {
+  await withServer(fetch, async (baseUrl) => {
+    const html = await (await fetch(`${baseUrl}/`)).text();
+    assert.match(html, /id="transactionCard"/);
+    assert.match(html, /id="loadTransactions"/);
+    assert.match(html, /id="copyAuctionAddress"/);
+    assert.match(html, /https:\/\/www\.courtauction\.go\.kr\//);
+
+    const response = await fetch(`${baseUrl}/runtime-config.js`);
+    const script = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/javascript/);
+    assert.match(script, /molitApiKey/);
+    assert.doesNotMatch(script, /test-key/);
+  });
+});
+
 test("지도 화면은 현재 위치 기반 필지 조회 동작을 제공한다", async () => {
   await withServer(fetch, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/`);
