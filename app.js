@@ -1,5 +1,6 @@
 import {buildReportModel} from "./report-model.js?v=20261012-9";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
+import {buildParcelShareUrl, parseParcelShareUrl} from "./share-model.js?v=20261013-15";
 import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
 import {hasDistrictPlan} from "./property-documents.js?v=20261012-9";
 import {
@@ -54,6 +55,7 @@ const elements = {
   buildingSummaryStatus: $("#buildingSummaryStatus"),
   buildingSummaryDetail: $("#buildingSummaryDetail"),
   openPropertyDocuments: $("#openPropertyDocuments"),
+  propertyDocumentsLink: $("#propertyDocumentsLink"),
   landRegisterLink: $("#landRegisterLink"),
   landUseLink: $("#landUseLink"),
   transactionCard: $("#transactionCard"),
@@ -98,6 +100,8 @@ const elements = {
   mapSelectParcel: $("#mapSelectParcel"),
   closeMap: $("#closeMap"),
   downloadReport: $("#downloadReport"),
+  shareParcel: $("#shareParcel"),
+  shareParcelLabel: $("#shareParcelLabel"),
   reportDialog: $("#reportDialog"),
   reportDialogAddress: $("#reportDialogAddress"),
   reportPreview: $("#reportPreview"),
@@ -460,6 +464,7 @@ function buildPropertyDocumentViewerUrl(item, data, tab = "building") {
 }
 
 function updatePropertyDocumentLinks(item, data) {
+  elements.propertyDocumentsLink.href = buildPropertyDocumentViewerUrl(item, data, "building");
   elements.landRegisterLink.href = buildPropertyDocumentViewerUrl(item, data, "landRegister");
   elements.landUseLink.href = buildPropertyDocumentViewerUrl(item, data, "landUse");
   elements.officialLink.href = buildPropertyDocumentViewerUrl(item, data, "eum");
@@ -663,19 +668,58 @@ async function copyAuctionAddress() {
   const address = elements.copyAuctionAddress.dataset.address || "";
   if (!address) return;
   try {
-    await navigator.clipboard.writeText(address);
+    await writeClipboardText(address);
   } catch {
-    const field = document.createElement("textarea");
-    field.value = address;
-    field.style.position = "fixed";
-    field.style.opacity = "0";
-    document.body.append(field);
-    field.select();
-    document.execCommand("copy");
-    field.remove();
+    setStatus("주소를 복사하지 못했습니다. 직접 선택해 복사해 주세요.", "error");
+    return;
   }
   elements.copyAuctionAddress.textContent = "복사됨";
   window.setTimeout(() => { elements.copyAuctionAddress.textContent = "주소 복사"; }, 1600);
+}
+
+async function writeClipboardText(value) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const field = document.createElement("textarea");
+  field.value = value;
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.append(field);
+  field.select();
+  const copied = document.execCommand("copy");
+  field.remove();
+  if (!copied) throw new Error("클립보드 복사 실패");
+}
+
+function showShareFeedback(label) {
+  elements.shareParcelLabel.textContent = label;
+  window.setTimeout(() => { elements.shareParcelLabel.textContent = "필지 공유"; }, 1800);
+}
+
+async function shareSelectedParcel() {
+  if (!selectedItem) return;
+  const address = selectedData?.address || selectedItem.parcelAddress || selectedItem.primaryAddress || `PNU ${selectedItem.pnu}`;
+  const url = buildParcelShareUrl(window.location.href, {...selectedItem, parcelAddress: address});
+  const shareData = {title: `토지이용한눈 · ${address}`, text: `${address} 토지이용계획 열람 요약`, url};
+  try {
+    if (typeof navigator.share === "function") {
+      await navigator.share(shareData);
+      showShareFeedback("공유 완료");
+      return;
+    }
+    await writeClipboardText(url);
+    showShareFeedback("링크 복사됨");
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    try {
+      await writeClipboardText(url);
+      showShareFeedback("링크 복사됨");
+    } catch {
+      setStatus("공유 링크를 복사하지 못했습니다.", "error");
+    }
+  }
 }
 
 function renderZoneList(target, zones) {
@@ -1144,6 +1188,7 @@ elements.transactionTypeTabs.addEventListener("click", (event) => {
 elements.loadTransactions.addEventListener("click", () => void loadTransactionsForSelectedParcel());
 elements.copyAuctionAddress.addEventListener("click", () => void copyAuctionAddress());
 elements.openPropertyDocuments.addEventListener("click", openPropertyDocumentViewer);
+elements.shareParcel.addEventListener("click", () => void shareSelectedParcel());
 
 elements.form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1221,3 +1266,8 @@ elements.clearHistory.addEventListener("click", () => {
 });
 
 renderHistory();
+const sharedParcel = parseParcelShareUrl(window.location.href);
+if (sharedParcel) {
+  elements.input.value = sharedParcel.parcelAddress || sharedParcel.primaryAddress;
+  void selectParcel(sharedParcel);
+}

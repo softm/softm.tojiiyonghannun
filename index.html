@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-14" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-15" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -106,13 +106,16 @@
 
         <div class="summary-actions summary-actions--primary" aria-label="선택한 필지 주요 기능">
           <nav class="document-links" aria-label="대장·토지이음 통합 보기 바로가기">
+            <a class="document-link document-link--primary" id="propertyDocumentsLink" href="./building-ledger.html?tab=building" target="_blank" rel="noopener noreferrer">
+              대장·토지이음 통합 보기 <span aria-hidden="true">↗</span>
+            </a>
             <a class="document-link" id="landRegisterLink" href="./building-ledger.html?tab=landRegister" target="_blank" rel="noopener noreferrer">
               토지대장 <span aria-hidden="true">↗</span>
             </a>
             <a class="document-link" id="landUseLink" href="./building-ledger.html?tab=landUse" target="_blank" rel="noopener noreferrer">
               토지이용계획확인원 <span aria-hidden="true">↗</span>
             </a>
-            <a class="document-link document-link--primary" id="officialLink" href="./building-ledger.html?tab=eum" target="_blank" rel="noopener noreferrer">
+            <a class="document-link" id="officialLink" href="./building-ledger.html?tab=eum" target="_blank" rel="noopener noreferrer">
               토지이음 <span aria-hidden="true">↗</span>
             </a>
           </nav>
@@ -123,6 +126,10 @@
           <button class="download-action" id="downloadReport" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
             PDF 보고서 보기
+          </button>
+          <button class="share-action" id="shareParcel" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/></svg>
+            <span id="shareParcelLabel">필지 공유</span>
           </button>
         </div>
 
@@ -138,7 +145,7 @@
             <p id="buildingSummaryStatus">이 필지의 건축물 정보를 확인하고 있어요.</p>
             <div class="building-summary__detail" id="buildingSummaryDetail" hidden></div>
           </div>
-          <button id="openPropertyDocuments" type="button">대장·토지이음 통합 보기 <span aria-hidden="true">↗</span></button>
+          <button id="openPropertyDocuments" type="button">건축물대장 보기 <span aria-hidden="true">↗</span></button>
         </article>
 
         <details class="transaction-card" id="transactionCard">
@@ -323,6 +330,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
     <script type="module" src="./report-export.js?v=20261012-9"></script>
-    <script type="module" src="./app.js?v=20261013-14"></script>
+    <script type="module" src="./app.js?v=20261013-15"></script>
   </body>
 </html>
