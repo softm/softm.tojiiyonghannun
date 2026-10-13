@@ -1,4 +1,4 @@
-import {normalizeBuildingRecords} from "./property-documents.js?v=20261012-10";
+import {normalizeBuildingRecords, normalizeLandRegisterRecord} from "./property-documents.js?v=20261013-17";
 
 const PRODUCTION_HOST = "tojiiyonghannun.designboard.net";
 // VWorld 브라우저 키는 등록된 운영 도메인에서만 사용하는 공개 클라이언트 식별자다.
@@ -417,5 +417,17 @@ export async function requestBuildingRecords(pnu, signal) {
     format: "json"
   }), {signal}));
   return {items: normalizeBuildingRecords(payload)};
+}
+
+export async function requestLandRegisterRecord(pnu, signal) {
+  if (!validPnu(pnu)) throw new Error("19자리 PNU가 필요합니다.");
+  if (!usesDirectBrowserApi()) return fetchLocalJson(`/api/land-register?pnu=${encodeURIComponent(pnu)}`, signal);
+  const payload = await fetchJsonp(vworldUrl("/ned/data/ladfrlList", {
+    pnu,
+    pageNo: "1",
+    numOfRows: "10",
+    format: "json"
+  }), {signal});
+  return {record: normalizeLandRegisterRecord(payload)};
 }
 

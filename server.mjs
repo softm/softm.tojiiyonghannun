@@ -12,7 +12,7 @@ import {
   normalizeSearchItems,
   parseEumLandUseHtml
 } from "./lib/land-use.mjs";
-import {normalizeBuildingRecords} from "./property-documents.js";
+import {normalizeBuildingRecords, normalizeLandRegisterRecord} from "./property-documents.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const defaultPort = Number(process.env.PORT || 4173);
@@ -385,6 +385,28 @@ async function handleBuildings(response, incomingUrl, fetchImpl, getConfig) {
   }
 }
 
+async function handleLandRegister(response, incomingUrl, fetchImpl, getConfig) {
+  const pnu = String(incomingUrl.searchParams.get("pnu") || "");
+  if (!isValidPnu(pnu)) {
+    writeJson(response, 400, {error: "19자리 PNU가 필요합니다."});
+    return;
+  }
+  try {
+    const config = getConfig();
+    const target = new URL("https://api.vworld.kr/ned/data/ladfrlList");
+    Object.entries({pnu, pageNo: "1", numOfRows: "10", format: "json", key: config.vworldApiKey, domain: config.vworldDomain})
+      .forEach(([key, value]) => target.searchParams.set(key, value));
+    const payload = await fetchJson(fetchImpl, target, {
+      headers: {"Accept": "application/json", "Referer": `https://${config.vworldDomain}/`, "User-Agent": "TojiIyongHannun/1.0"},
+      signal: AbortSignal.timeout(12000)
+    });
+    writeJson(response, 200, {record: normalizeLandRegisterRecord(payload)}, "private, max-age=3600");
+  } catch (error) {
+    console.error("토지대장 공개정보 연결 실패:", error.message);
+    writeJson(response, 502, {error: "토지대장 공개정보를 불러오지 못했습니다."});
+  }
+}
+
 function serveStatic(response, pathname) {
   const requestPath = pathname === "/" ? "/index.html" : pathname;
   if (deniedFiles.has(requestPath) || requestPath.startsWith("/.") || requestPath.startsWith("/lib/") || requestPath.startsWith("/tests/")) {
@@ -438,6 +460,10 @@ export function createAppServer({fetchImpl = fetch, getConfig = readLocalConfig}
     }
     if (incomingUrl.pathname === "/api/buildings") {
       await handleBuildings(response, incomingUrl, fetchImpl, getConfig);
+      return;
+    }
+    if (incomingUrl.pathname === "/api/land-register") {
+      await handleLandRegister(response, incomingUrl, fetchImpl, getConfig);
       return;
     }
     if (incomingUrl.pathname === "/api/vicinity-map") {

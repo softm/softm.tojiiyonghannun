@@ -58,6 +58,7 @@ function buildingName(building, index) {
 function buildSupplementSections(data, item, context, address, pnu) {
   const buildings = Array.isArray(context?.buildings) ? context.buildings : [];
   const transaction = context?.transaction || null;
+  const landRegister = context?.landRegister || null;
   const scope = transaction?.scope === "exact" ? "해당 필지·단지 거래" : "법정동 유사 거래";
   const transactionLabel = clean(transaction?.definition?.label || transaction?.type) || "선택 유형";
   const transactionNotes = transaction
@@ -70,8 +71,28 @@ function buildSupplementSections(data, item, context, address, pnu) {
     : "보고서 생성 시 조회 결과가 없거나 공공데이터 조회를 완료하지 못했습니다.";
   const officialUrl = clean(data?.officialUrl) || `https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?chk=0&isNoScr=script&mode=search&pnu=${encodeURIComponent(pnu)}&selGbn=umd`;
   const integratedUrl = `https://tojiiyonghannun.designboard.net/building-ledger.html?pnu=${encodeURIComponent(pnu)}&tab=building`;
+  const landRegisterIssueUrl = "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000026";
+  const cadastralMapIssueUrl = "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000027";
+  const registryIssueUrl = "https://www.iros.go.kr/";
 
   return [
+    {
+      title: "토지대장·지적공부 공개정보",
+      pageTitle: "토지 공부·권리 확인",
+      pageSize: 14,
+      kind: "keyValue",
+      rows: landRegister ? [
+        ["대장 구분", valueOrDash(landRegister.ledgerType)],
+        ["소재지", valueOrDash([landRegister.legalDong, landRegister.lotNumber].filter(Boolean).join(" "))],
+        ["지목", valueOrDash(landRegister.landCategory)],
+        ["면적", formatNumber(landRegister.area, "㎡")],
+        ["소유구분", valueOrDash(landRegister.ownershipType)],
+        ["공유인수", landRegister.coOwnerCount == null ? "미제공" : `${landRegister.coOwnerCount}명`],
+        ["지적도 정보", valueOrDash([landRegister.cadastralMapType, landRegister.cadastralScale ? `축척 ${landRegister.cadastralScale}` : ""].filter(Boolean).join(" · "))],
+        ["공개정보 기준일", valueOrDash(landRegister.lastUpdated)]
+      ] : [["조회 상태", "토지대장 공개정보를 불러오지 못했습니다. 아래 공식 발급 경로에서 확인하세요."]],
+      notice: "소유구분·공유인수는 공개 범위의 참고정보입니다. 소유자별 성명·주소·지분과 현재 권리관계는 공식 발급 문서 및 등기기록으로 확인하세요."
+    },
     {
       title: `건축물대장 요약 (${buildings.length}개)`,
       pageTitle: "건축물대장 요약",
@@ -137,6 +158,10 @@ function buildSupplementSections(data, item, context, address, pnu) {
       rows: [
         ["토지이음 원문", officialUrl],
         ["대장·토지이음 통합 보기", integratedUrl],
+        ["토지(임야)대장 발급", landRegisterIssueUrl],
+        ["지적도(임야도) 등본 발급", cadastralMapIssueUrl],
+        ["공유지연명부 확인", landRegisterIssueUrl],
+        ["등기사항전부증명서", registryIssueUrl],
         ["국토교통부 실거래가 공개시스템", "https://rt.molit.go.kr/"],
         ["대한민국 법원경매정보", "https://www.courtauction.go.kr/"],
         ["경매 검색 주소", address]

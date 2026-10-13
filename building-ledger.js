@@ -1,4 +1,4 @@
-import {requestBuildingRecords} from "./browser-api.js?v=20261012-10";
+import {requestBuildingRecords, requestLandRegisterRecord} from "./browser-api.js?v=20261013-10";
 import {
   PROPERTY_DOCUMENT_URLS,
   buildBuildingLifecycleUrl,
@@ -10,7 +10,7 @@ import {
   parcelDocumentIdentity,
   propertyDocumentTabStorageKey,
   resolvePropertyDocumentTab
-} from "./property-documents.js?v=20261013-16";
+} from "./property-documents.js?v=20261013-17";
 
 const params = new URLSearchParams(window.location.search);
 const pnu = String(params.get("pnu") || "");
@@ -39,6 +39,12 @@ const elements = {
   buildingOverview: $("#buildingOverview"),
   buildingFrameShell: $("#buildingFrameShell"),
   buildingFrame: $("#buildingFrame"),
+  landRegisterSummary: $("#landRegisterSummary"),
+  cadastralMapData: $("#cadastralMapData"),
+  coOwnerRegisterData: $("#coOwnerRegisterData"),
+  registryAddress: $("#registryAddress"),
+  registryPnu: $("#registryPnu"),
+  copyRegistryAddress: $("#copyRegistryAddress"),
   eumExternalLink: $("#eumExternalLink"),
   lifecycleTab: $("#tabLifecycle"),
   districtPlanTab: $("#tabDistrictPlan")
@@ -112,7 +118,55 @@ function setLifecycleAvailability() {
 function updateExternalButton() {
   const unavailable = activeTab === "building" && selectedBuildingIndex < 0;
   elements.openExternal.disabled = unavailable;
-  elements.openExternal.textContent = unavailable ? "개별 건축물을 선택하세요" : "새 창으로 열기";
+  const labels = {
+    cadastralMap: "정부24에서 발급",
+    coOwnerRegister: "정부24에서 발급",
+    registry: "인터넷등기소 열기"
+  };
+  elements.openExternal.textContent = unavailable ? "개별 건축물을 선택하세요" : labels[activeTab] || "새 창으로 열기";
+}
+
+function renderDocumentFacts(target, rows) {
+  const list = document.createElement("dl");
+  rows.forEach(([label, value]) => {
+    const row = document.createElement("div");
+    row.append(createElement("dt", "", label), createElement("dd", "", value || "미제공"));
+    list.append(row);
+  });
+  target.replaceChildren(list);
+}
+
+function renderLandRegisterRecord(record, {error = false} = {}) {
+  if (!record) {
+    elements.landRegisterSummary.textContent = error
+      ? "토지대장 공개정보를 불러오지 못했습니다. 국토교통부 원문 또는 정부24 발급 화면을 이용하세요."
+      : "이 필지의 토지대장 공개정보가 없습니다. 정부24에서 공식 문서를 확인하세요.";
+    [elements.cadastralMapData, elements.coOwnerRegisterData].forEach((target) => {
+      target.replaceChildren(createElement("p", "", "공개정보를 표시할 수 없습니다. 아래 공식 발급 링크를 이용해 주세요."));
+    });
+    return;
+  }
+  const area = formatMetric(record.area);
+  elements.landRegisterSummary.textContent = `${record.ledgerType || "토지대장"} · ${record.landCategory || "지목 미제공"} · ${area} · 공개정보 기준일 ${formatDate(record.lastUpdated)}`;
+  renderDocumentFacts(elements.cadastralMapData, [
+    ["도면 종류", record.cadastralMapType],
+    ["축척", record.cadastralScale],
+    ["필지", `${record.legalDong} ${record.lotNumber}`.trim()]
+  ]);
+  renderDocumentFacts(elements.coOwnerRegisterData, [
+    ["소유구분", record.ownershipType],
+    ["공유인수", record.coOwnerCount == null ? "미제공" : `${record.coOwnerCount}명`],
+    ["공개 기준일", formatDate(record.lastUpdated)]
+  ]);
+}
+
+async function loadLandRegisterRecord() {
+  try {
+    const payload = await requestLandRegisterRecord(pnu);
+    renderLandRegisterRecord(payload.record);
+  } catch {
+    renderLandRegisterRecord(null, {error: true});
+  }
 }
 
 function loadSelectedBuilding(index) {
@@ -248,6 +302,9 @@ function openActiveDocument() {
     submitPost(PROPERTY_DOCUMENT_URLS.building, buildingPostFields(pnu, buildings[selectedBuildingIndex]), "_blank");
   }
   if (activeTab === "landRegister") submitPost(PROPERTY_DOCUMENT_URLS.landRegister, landRegisterPostFields(pnu), "_blank");
+  if (activeTab === "cadastralMap") window.open(PROPERTY_DOCUMENT_URLS.cadastralMapIssue, "_blank", "noopener,noreferrer");
+  if (activeTab === "coOwnerRegister") window.open(PROPERTY_DOCUMENT_URLS.landRegisterIssue, "_blank", "noopener,noreferrer");
+  if (activeTab === "registry") window.open(PROPERTY_DOCUMENT_URLS.registryIssue, "_blank", "noopener,noreferrer");
   if (activeTab === "landUse") submitPost(PROPERTY_DOCUMENT_URLS.landUse, landUsePostFields(pnu), "_blank");
   if (activeTab === "eum") window.open(buildEumLandUseUrl(pnu), "_blank", "noopener,noreferrer");
   if (activeTab === "districtPlan") window.open(buildDistrictPlanUrl(pnu), "_blank", "noopener,noreferrer");
@@ -255,6 +312,8 @@ function openActiveDocument() {
 }
 
 elements.address.textContent = valid ? `${address} · PNU ${pnu}` : "필지 정보가 올바르지 않습니다.";
+elements.registryAddress.textContent = address;
+elements.registryPnu.textContent = valid ? `PNU ${pnu}` : "";
 if (valid) elements.eumExternalLink.href = buildEumLandUseUrl(pnu);
 elements.districtPlanTab.hidden = !(valid && districtPlanEnabled && pnu.startsWith("11"));
 elements.tabs.addEventListener("click", (event) => {
@@ -282,6 +341,15 @@ elements.buildingSelector.addEventListener("change", () => {
   loadSelectedBuilding(Number(elements.buildingSelector.value));
 });
 elements.openExternal.addEventListener("click", openActiveDocument);
+elements.copyRegistryAddress.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(address);
+    elements.copyRegistryAddress.textContent = "복사됨";
+  } catch {
+    window.prompt("아래 주소를 복사해 주세요.", address);
+  }
+  window.setTimeout(() => { elements.copyRegistryAddress.textContent = "주소 복사"; }, 1600);
+});
 elements.close.addEventListener("click", () => {
   if (tabStateKey) {
     try { window.sessionStorage.removeItem(tabStateKey); } catch {}
@@ -298,5 +366,5 @@ if (!valid) {
 } else {
   parcelDocumentIdentity(pnu);
   if (!activateTab(initialTab)) activateTab("building");
-  void loadBuildings();
+  void Promise.all([loadBuildings(), loadLandRegisterRecord()]);
 }

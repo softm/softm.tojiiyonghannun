@@ -1,16 +1,17 @@
-import {buildReportModel} from "./report-model.js?v=20261013-11";
+import {buildReportModel} from "./report-model.js?v=20261013-12";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
 import {buildParcelShareUrl, parseParcelShareUrl} from "./share-model.js?v=20261013-15";
 import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
-import {PROPERTY_DOCUMENT_VIEWER_TARGET, hasDistrictPlan} from "./property-documents.js?v=20261013-16";
+import {PROPERTY_DOCUMENT_VIEWER_TARGET, hasDistrictPlan} from "./property-documents.js?v=20261013-17";
 import {
   requestAddressSearch,
   requestBuildingRecords,
+  requestLandRegisterRecord,
   requestLandUse,
   requestParcelAtPoint,
   requestParcelGeometry,
   usesDirectBrowserApi
-} from "./browser-api.js?v=20261012-9";
+} from "./browser-api.js?v=20261013-10";
 
 const {Map: OLMap, View, Feature} = ol;
 const TileLayer = ol.layer.Tile;
@@ -58,6 +59,19 @@ const elements = {
   propertyDocumentsLink: $("#propertyDocumentsLink"),
   landRegisterLink: $("#landRegisterLink"),
   landUseLink: $("#landUseLink"),
+  cadastralMapLink: $("#cadastralMapLink"),
+  coOwnerRegisterLink: $("#coOwnerRegisterLink"),
+  registryLink: $("#registryLink"),
+  landRegisterAvailability: $("#landRegisterAvailability"),
+  landRegisterPreview: $("#landRegisterPreview"),
+  cadastralMapAvailability: $("#cadastralMapAvailability"),
+  cadastralMapPreview: $("#cadastralMapPreview"),
+  coOwnerAvailability: $("#coOwnerAvailability"),
+  coOwnerPreview: $("#coOwnerPreview"),
+  landRegisterDetailLink: $("#landRegisterDetailLink"),
+  cadastralMapDetailLink: $("#cadastralMapDetailLink"),
+  coOwnerDetailLink: $("#coOwnerDetailLink"),
+  registryDetailLink: $("#registryDetailLink"),
   transactionCard: $("#transactionCard"),
   transactionTypeTabs: $("#transactionTypeTabs"),
   transactionQueryTitle: $("#transactionQueryTitle"),
@@ -142,6 +156,9 @@ let selectedTransactionResult = null;
 let transactionInitializationPromise = Promise.resolve();
 let buildingController;
 let selectedBuildings = [];
+let landRegisterController;
+let selectedLandRegisterRecord = null;
+let landRegisterInitializationPromise = Promise.resolve();
 
 const mapGeoJson = new GeoJSON();
 const mapBoundaryStyle = [
@@ -459,6 +476,54 @@ async function loadBuildingSummary(item) {
   }
 }
 
+function formatLandRegisterDate(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length >= 8 ? `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}` : "기준일 미제공";
+}
+
+function setPropertyRecordStatus(element, label, state = "ready") {
+  element.textContent = label;
+  element.dataset.state = state;
+}
+
+function renderLandRegisterSummary(record, {error = false} = {}) {
+  selectedLandRegisterRecord = record || null;
+  if (!record) {
+    const status = error ? "공식 발급" : "정보 없음";
+    setPropertyRecordStatus(elements.landRegisterAvailability, status, "error");
+    setPropertyRecordStatus(elements.cadastralMapAvailability, status, "error");
+    setPropertyRecordStatus(elements.coOwnerAvailability, status, "error");
+    elements.landRegisterPreview.textContent = "공개정보를 표시할 수 없습니다. 원문 또는 정부24 발급 화면에서 확인하세요.";
+    elements.cadastralMapPreview.textContent = "도면 종류·축척을 확인할 수 없습니다. 정부24에서 공식 등본을 발급하세요.";
+    elements.coOwnerPreview.textContent = "공유 상세정보를 확인할 수 없습니다. 정부24 발급 문서에서 확인하세요.";
+    return;
+  }
+  setPropertyRecordStatus(elements.landRegisterAvailability, "공개정보 조회됨");
+  setPropertyRecordStatus(elements.cadastralMapAvailability, "도면정보 조회됨");
+  setPropertyRecordStatus(elements.coOwnerAvailability, record.coOwnerCount > 0 ? "공유정보 있음" : "공개정보 조회됨");
+  elements.landRegisterPreview.textContent = [record.ledgerType, record.landCategory, formatBuildingMetric(record.area), record.ownershipType].filter(Boolean).join(" · ");
+  elements.cadastralMapPreview.textContent = [record.cadastralMapType, record.cadastralScale ? `축척 ${record.cadastralScale}` : "", formatLandRegisterDate(record.lastUpdated)].filter(Boolean).join(" · ");
+  elements.coOwnerPreview.textContent = `${record.ownershipType || "소유구분 미제공"} · ${record.coOwnerCount == null ? "공유인수 미제공" : `공유인수 ${record.coOwnerCount}명`} · 소유자별 상세는 발급 문서 확인`;
+}
+
+async function loadLandRegisterSummary(item) {
+  landRegisterController?.abort();
+  landRegisterController = new AbortController();
+  selectedLandRegisterRecord = null;
+  [elements.landRegisterAvailability, elements.cadastralMapAvailability, elements.coOwnerAvailability]
+    .forEach((element) => setPropertyRecordStatus(element, "조회 중"));
+  try {
+    const payload = await requestLandRegisterRecord(item.pnu, landRegisterController.signal);
+    if (selectedItem?.pnu !== item.pnu) return null;
+    renderLandRegisterSummary(payload.record);
+    return payload.record;
+  } catch (error) {
+    if (error.name === "AbortError" || selectedItem?.pnu !== item.pnu) return null;
+    renderLandRegisterSummary(null, {error: true});
+    return null;
+  }
+}
+
 function buildPropertyDocumentViewerUrl(item, data, tab = "building") {
   const params = new URLSearchParams({
     pnu: item.pnu,
@@ -474,6 +539,13 @@ function updatePropertyDocumentLinks(item, data) {
   elements.landRegisterLink.href = buildPropertyDocumentViewerUrl(item, data, "landRegister");
   elements.landUseLink.href = buildPropertyDocumentViewerUrl(item, data, "landUse");
   elements.officialLink.href = buildPropertyDocumentViewerUrl(item, data, "eum");
+  elements.cadastralMapLink.href = buildPropertyDocumentViewerUrl(item, data, "cadastralMap");
+  elements.coOwnerRegisterLink.href = buildPropertyDocumentViewerUrl(item, data, "coOwnerRegister");
+  elements.registryLink.href = buildPropertyDocumentViewerUrl(item, data, "registry");
+  elements.landRegisterDetailLink.href = elements.landRegisterLink.href;
+  elements.cadastralMapDetailLink.href = elements.cadastralMapLink.href;
+  elements.coOwnerDetailLink.href = elements.coOwnerRegisterLink.href;
+  elements.registryDetailLink.href = elements.registryLink.href;
 }
 
 function openPropertyDocumentViewer() {
@@ -804,6 +876,7 @@ function renderSummary(data, item) {
   renderRestrictions(data.restrictions);
   resetTransactionPanel(item, data);
   transactionInitializationPromise = initializeTransactionPanel(item, data);
+  landRegisterInitializationPromise = loadLandRegisterSummary(item);
   updatePropertyDocumentLinks(item, data);
   elements.viewMap.hidden = !(Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)));
   elements.summary.hidden = false;
@@ -1115,10 +1188,11 @@ elements.downloadReport.addEventListener("click", async () => {
   updateExportProgress({percent: 5, message: "조회 내용을 정리하는 중입니다."});
   try {
     updateExportProgress({percent: 7, message: "건축물·실거래 정보를 보고서에 모으고 있어요."});
-    await transactionInitializationPromise;
+    await Promise.all([transactionInitializationPromise, landRegisterInitializationPromise]);
     const model = buildReportModel(selectedData, selectedItem, new Date(), {
       buildings: selectedBuildings,
-      transaction: selectedTransactionResult
+      transaction: selectedTransactionResult,
+      landRegister: selectedLandRegisterRecord
     });
     if (usesDirectBrowserApi() && model.vicinity) {
       model.vicinity.imageUrl = "";
@@ -1218,7 +1292,9 @@ elements.loadTransactions.addEventListener("click", () => {
 });
 elements.copyAuctionAddress.addEventListener("click", () => void copyAuctionAddress());
 elements.openPropertyDocuments.addEventListener("click", openPropertyDocumentViewer);
-[elements.propertyDocumentsLink, elements.landRegisterLink, elements.landUseLink, elements.officialLink]
+[elements.propertyDocumentsLink, elements.landRegisterLink, elements.landUseLink, elements.officialLink,
+  elements.cadastralMapLink, elements.coOwnerRegisterLink, elements.registryLink,
+  elements.landRegisterDetailLink, elements.cadastralMapDetailLink, elements.coOwnerDetailLink, elements.registryDetailLink]
   .forEach((link) => link.addEventListener("click", handlePropertyDocumentLink));
 elements.shareParcel.addEventListener("click", () => void shareSelectedParcel());
 
@@ -1278,6 +1354,9 @@ elements.searchAgain.addEventListener("click", () => {
   transactionInitializationPromise = Promise.resolve();
   buildingController?.abort();
   selectedBuildings = [];
+  landRegisterController?.abort();
+  selectedLandRegisterRecord = null;
+  landRegisterInitializationPromise = Promise.resolve();
   hideLookupProgress();
   globalThis.TojiIyongAds?.hide("searchResults");
   globalThis.TojiIyongAds?.hide("parcelDetail");

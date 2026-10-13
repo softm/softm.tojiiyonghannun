@@ -4,12 +4,25 @@ export const PROPERTY_DOCUMENT_URLS = Object.freeze({
   landUse: "https://irts.molit.go.kr/usr/estate/cntc/kab/RtecsLandUseOfLandRegstrPreview.do",
   eum: "https://www.eum.go.kr/web/ar/lu/luLandDet.jsp",
   districtPlan: "https://urban.seoul.go.kr/view/map/mapRegInfo.pop",
-  lifecycle: "https://blcm.go.kr/lim/bldSumInfo/BldSumInfoView.do"
+  lifecycle: "https://blcm.go.kr/lim/bldSumInfo/BldSumInfoView.do",
+  landRegisterIssue: "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000026",
+  cadastralMapIssue: "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000027",
+  registryIssue: "https://www.iros.go.kr/"
 });
 
 export const PROPERTY_DOCUMENT_VIEWER_TARGET = "tojiiyonghannunPropertyDetails";
 
-const PROPERTY_DOCUMENT_TABS = new Set(["building", "landRegister", "landUse", "eum", "districtPlan", "lifecycle"]);
+const PROPERTY_DOCUMENT_TABS = new Set([
+  "building",
+  "landRegister",
+  "cadastralMap",
+  "coOwnerRegister",
+  "registry",
+  "landUse",
+  "eum",
+  "districtPlan",
+  "lifecycle"
+]);
 
 export function normalizePropertyDocumentTab(value) {
   const tab = String(value || "");
@@ -52,6 +65,30 @@ export function normalizeBuildingRecords(payload) {
     isMain: String(item?.buldMainAtachSeCode || "") === "0"
   })).filter((item) => /^\d{1,20}$/.test(item.id))
     .sort((left, right) => Number(right.isMain) - Number(left.isMain) || right.totalArea - left.totalArea);
+}
+
+export function normalizeLandRegisterRecord(payload) {
+  const root = payload?.ladfrlVOList || payload?.response?.ladfrlVOList || payload?.response || {};
+  const item = toRows(root.ladfrlVOList || root.field)[0];
+  if (!item || !/^\d{19}$/.test(String(item.pnu || ""))) return null;
+  const areaText = String(item.lndpclAr ?? "").trim();
+  const coOwnerCountText = String(item.cnrsPsnCo ?? "").trim();
+  const area = areaText ? Number(areaText) : Number.NaN;
+  const coOwnerCount = coOwnerCountText ? Number(coOwnerCountText) : Number.NaN;
+  const isForest = String(item.regstrSeCode || "") === "2" || String(item.pnu)[10] === "2";
+  return {
+    pnu: String(item.pnu),
+    legalDong: cleanText(item.ldCodeNm),
+    lotNumber: cleanText(item.mnnmSlno),
+    ledgerType: cleanText(item.regstrSeCodeNm) || (isForest ? "임야대장" : "토지대장"),
+    landCategory: cleanText(item.lndcgrCodeNm),
+    area: Number.isFinite(area) && area > 0 ? area : null,
+    ownershipType: cleanText(item.posesnSeCodeNm),
+    coOwnerCount: Number.isFinite(coOwnerCount) && coOwnerCount >= 0 ? coOwnerCount : null,
+    cadastralMapType: isForest ? "임야도" : "지적도",
+    cadastralScale: cleanText(item.ladFrtlScNm),
+    lastUpdated: cleanText(item.lastUpdtDt)
+  };
 }
 
 export function parcelDocumentIdentity(pnu) {

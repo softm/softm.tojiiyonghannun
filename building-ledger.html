@@ -6,7 +6,7 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#173f37" />
     <title>대장·토지이음 통합 보기 | 토지이용한눈</title>
-    <link rel="stylesheet" href="./building-ledger.css?v=20261013-13" />
+    <link rel="stylesheet" href="./building-ledger.css?v=20261013-14" />
   </head>
   <body>
     <header class="viewer-header">
@@ -27,6 +27,9 @@
     <nav class="viewer-tabs" id="viewerTabs" role="tablist" aria-label="공식 문서 유형">
       <button class="active" id="tabBuilding" type="button" role="tab" aria-selected="true" aria-controls="panelBuilding" data-document-tab="building">건축물대장</button>
       <button id="tabLandRegister" type="button" role="tab" aria-selected="false" aria-controls="panelLandRegister" data-document-tab="landRegister">토지대장</button>
+      <button id="tabCadastralMap" type="button" role="tab" aria-selected="false" aria-controls="panelCadastralMap" data-document-tab="cadastralMap">지적도 등본</button>
+      <button id="tabCoOwnerRegister" type="button" role="tab" aria-selected="false" aria-controls="panelCoOwnerRegister" data-document-tab="coOwnerRegister">공유지연명부</button>
+      <button id="tabRegistry" type="button" role="tab" aria-selected="false" aria-controls="panelRegistry" data-document-tab="registry">등기사항전부증명서</button>
       <button id="tabLandUse" type="button" role="tab" aria-selected="false" aria-controls="panelLandUse" data-document-tab="landUse">토지이용계획확인원</button>
       <button id="tabEum" type="button" role="tab" aria-selected="false" aria-controls="panelEum" data-document-tab="eum">토지이음</button>
       <button id="tabDistrictPlan" type="button" role="tab" aria-selected="false" aria-controls="panelDistrictPlan" data-document-tab="districtPlan" hidden>지구단위계획</button>
@@ -50,10 +53,44 @@
       </section>
 
       <section class="document-panel" id="panelLandRegister" role="tabpanel" aria-labelledby="tabLandRegister" data-document-panel="landRegister" hidden>
+        <div class="document-source-bar">
+          <p id="landRegisterSummary">VWorld에서 토지대장 공개정보를 확인하고 있어요.</p>
+          <a href="https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000026" target="_blank" rel="noopener noreferrer">정부24 발급 <span aria-hidden="true">↗</span></a>
+        </div>
         <div class="frame-shell">
           <div class="frame-status" id="landRegisterStatus" role="status">국토교통부 토지대장을 불러오고 있어요.</div>
           <iframe id="landRegisterFrame" name="landRegisterDocumentFrame" title="국토교통부 토지대장 원문" loading="lazy"></iframe>
         </div>
+      </section>
+
+      <section class="document-panel" id="panelCadastralMap" role="tabpanel" aria-labelledby="tabCadastralMap" data-document-panel="cadastralMap" hidden>
+        <article class="official-document-card">
+          <header><small>공개정보 + 공식 발급</small><h2>지적도(임야도) 등본</h2><p>공개 API에서 확인되는 도면 종류와 축척은 바로 표시하고, 법적 효력이 있는 등본은 정부24 발급 화면으로 연결합니다.</p></header>
+          <div class="official-document-data" id="cadastralMapData" role="status"><p>지적공부 정보를 확인하고 있어요.</p></div>
+          <a class="official-document-action" href="https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000027" target="_blank" rel="noopener noreferrer">정부24에서 지적도 등본 발급 <span aria-hidden="true">↗</span></a>
+          <p class="official-document-notice">화면에 표시되는 필지 경계·축척은 참고용 공개정보이며, 발급 등본을 대신하지 않습니다.</p>
+        </article>
+      </section>
+
+      <section class="document-panel" id="panelCoOwnerRegister" role="tabpanel" aria-labelledby="tabCoOwnerRegister" data-document-panel="coOwnerRegister" hidden>
+        <article class="official-document-card">
+          <header><small>공개 범위 확인</small><h2>공유지연명부</h2><p>공개 API에서 제공되는 소유구분과 공유인수만 표시합니다. 소유자별 성명·주소·지분은 공개 API로 제공되지 않습니다.</p></header>
+          <div class="official-document-data" id="coOwnerRegisterData" role="status"><p>공유 관련 공개정보를 확인하고 있어요.</p></div>
+          <a class="official-document-action" href="https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000026" target="_blank" rel="noopener noreferrer">정부24에서 토지대장·공유지연명부 발급 <span aria-hidden="true">↗</span></a>
+          <p class="official-document-notice">공유인수가 표시되어도 실제 현재 소유관계와 지분은 발급 문서 및 등기기록으로 다시 확인하세요.</p>
+        </article>
+      </section>
+
+      <section class="document-panel" id="panelRegistry" role="tabpanel" aria-labelledby="tabRegistry" data-document-panel="registry" hidden>
+        <article class="official-document-card">
+          <header><small>공식 사이트 연결</small><h2>등기사항전부증명서</h2><p>등기기록은 공개 API로 가져올 수 없어 내용을 자동 표시하지 않습니다. 아래 주소를 복사한 뒤 인터넷등기소에서 열람·발급하세요.</p></header>
+          <div class="registry-address"><span>검색할 부동산 주소</span><strong id="registryAddress">선택한 필지</strong><small id="registryPnu"></small></div>
+          <div class="official-document-actions">
+            <button id="copyRegistryAddress" type="button">주소 복사</button>
+            <a class="official-document-action" href="https://www.iros.go.kr/" target="_blank" rel="noopener noreferrer">인터넷등기소 열기 <span aria-hidden="true">↗</span></a>
+          </div>
+          <p class="official-document-notice">열람·발급 과정에서 주소 검색, 수수료 결제 또는 본인 확인이 필요할 수 있습니다.</p>
+        </article>
       </section>
 
       <section class="document-panel" id="panelLandUse" role="tabpanel" aria-labelledby="tabLandUse" data-document-panel="landUse" hidden>
@@ -97,8 +134,8 @@
 
     <footer class="viewer-notice">
       <strong>참고용 공개정보</strong>
-      <span>원문은 외부 기관이 제공하며 발급 문서가 아닙니다. 법적 증명이 필요하면 정부24·세움터 등 공식 발급 절차를 이용하세요.</span>
+      <span>화면의 공개정보와 원문은 발급 문서가 아닙니다. 법적 증명이 필요하면 정부24·인터넷등기소 등 공식 발급 절차를 이용하세요.</span>
     </footer>
-    <script type="module" src="./building-ledger.js?v=20261013-16"></script>
+    <script type="module" src="./building-ledger.js?v=20261013-17"></script>
   </body>
 </html>

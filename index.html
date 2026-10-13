@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-19" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-22" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -21,7 +21,7 @@
         </span>
         <span class="brand-copy"><strong>토지이용한눈</strong><small>Land Use at a Glance</small></span>
       </a>
-      <span class="official-note">공개정보 간편 열람</span>
+      <span class="official-note" title="정부·지자체·공공기관의 공식 앱이 아닙니다.">민간 정보 서비스</span>
     </header>
 
     <main id="main">
@@ -134,6 +134,15 @@
               <a class="document-link" id="officialLink" href="./building-ledger.html?tab=eum" target="tojiiyonghannunPropertyDetails">
                 토지이음 <span aria-hidden="true">↗</span>
               </a>
+              <a class="document-link" id="cadastralMapLink" href="./building-ledger.html?tab=cadastralMap" target="tojiiyonghannunPropertyDetails">
+                지적도 등본 <span aria-hidden="true">↗</span>
+              </a>
+              <a class="document-link" id="coOwnerRegisterLink" href="./building-ledger.html?tab=coOwnerRegister" target="tojiiyonghannunPropertyDetails">
+                공유지연명부 <span aria-hidden="true">↗</span>
+              </a>
+              <a class="document-link" id="registryLink" href="./building-ledger.html?tab=registry" target="tojiiyonghannunPropertyDetails">
+                등기사항전부증명서 <span aria-hidden="true">↗</span>
+              </a>
             </nav>
           </section>
           <section class="action-cluster action-cluster--tools" aria-labelledby="toolActionsTitle">
@@ -154,6 +163,39 @@
         </div>
 
         <dl class="fact-grid" id="factGrid"></dl>
+
+        <section class="property-records" aria-labelledby="propertyRecordsTitle">
+          <header class="property-records__head">
+            <div><small>토지 공부·권리 확인</small><h3 id="propertyRecordsTitle">조회 가능 정보와 공식 발급</h3></div>
+            <p>공개정보는 바로 표시하고, 인증이나 발급이 필요한 문서는 공식 사이트로 연결합니다.</p>
+          </header>
+          <div class="property-records__grid">
+            <article class="property-record-item">
+              <span class="property-record-item__status" id="landRegisterAvailability">조회 중</span>
+              <h4>토지대장</h4>
+              <p id="landRegisterPreview">지목·면적·소유구분 등 공개정보를 확인하고 있어요.</p>
+              <a id="landRegisterDetailLink" href="./building-ledger.html?tab=landRegister" target="tojiiyonghannunPropertyDetails">내용·원문 보기 <span aria-hidden="true">↗</span></a>
+            </article>
+            <article class="property-record-item">
+              <span class="property-record-item__status" id="cadastralMapAvailability">조회 중</span>
+              <h4>지적도 등본</h4>
+              <p id="cadastralMapPreview">도면 종류와 축척을 확인하고 있어요.</p>
+              <a id="cadastralMapDetailLink" href="./building-ledger.html?tab=cadastralMap" target="tojiiyonghannunPropertyDetails">정보·발급 경로 <span aria-hidden="true">↗</span></a>
+            </article>
+            <article class="property-record-item">
+              <span class="property-record-item__status" id="coOwnerAvailability">조회 중</span>
+              <h4>공유지연명부</h4>
+              <p id="coOwnerPreview">소유구분과 공개된 공유인수를 확인하고 있어요.</p>
+              <a id="coOwnerDetailLink" href="./building-ledger.html?tab=coOwnerRegister" target="tojiiyonghannunPropertyDetails">정보·발급 경로 <span aria-hidden="true">↗</span></a>
+            </article>
+            <article class="property-record-item">
+              <span class="property-record-item__status property-record-item__status--link">공식 발급</span>
+              <h4>등기사항전부증명서</h4>
+              <p>공개 API가 없어 인터넷등기소에서 주소로 열람·발급해야 합니다.</p>
+              <a id="registryDetailLink" href="./building-ledger.html?tab=registry" target="tojiiyonghannunPropertyDetails">주소 복사·발급 경로 <span aria-hidden="true">↗</span></a>
+            </article>
+          </div>
+        </section>
 
         <aside class="adfit-zone adfit-zone--detail" id="parcelDetailAd" aria-label="광고" hidden>
           <span class="adfit-label">광고</span>
@@ -265,7 +307,7 @@
 
     <footer>
       <strong>토지이용한눈</strong>
-      <p>공간정보 오픈플랫폼 VWorld · 토지이음 공개정보를 활용합니다.</p>
+      <p>정부기관 공식 앱이 아닌 독립적인 민간 정보 서비스입니다.</p>
       <a href="/privacy.html">개인정보처리방침</a>
     </footer>
 
@@ -357,6 +399,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
     <script type="module" src="./report-export.js?v=20261013-10"></script>
-    <script type="module" src="./app.js?v=20261013-19"></script>
+    <script type="module" src="./app.js?v=20261013-20"></script>
   </body>
 </html>
