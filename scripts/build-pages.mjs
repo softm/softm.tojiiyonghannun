@@ -7,6 +7,8 @@ const output = path.join(root, "dist");
 const publicFiles = [
   "index.html",
   "privacy.html",
+  "adfit-config.js",
+  "adfit.js",
   "app.js",
   "building-ledger.html",
   "building-ledger.css",
