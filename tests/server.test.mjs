@@ -113,6 +113,22 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     assert.match(viewer, /id="eumExternalLink"/);
     assert.match(viewer, /data-document-tab="districtPlan"/);
     assert.match(viewer, /data-document-tab="lifecycle"/);
+    assert.doesNotMatch(viewer, /id="tabLifecycle"[^>]*\shidden(?:\s|>)/);
+    const tabOrder = [...viewer.matchAll(/<button[^>]+data-document-tab="([^"]+)"[^>]*>/g)].map((match) => match[1]);
+    assert.deepEqual(tabOrder.slice(0, 8), [
+      "building",
+      "landRegister",
+      "landUse",
+      "eum",
+      "lifecycle",
+      "cadastralMap",
+      "registry",
+      "coOwnerRegister"
+    ]);
+    assert.equal(tabOrder[8], "districtPlan");
+    assert.match(viewer, /id="lifecycleEmpty"/);
+    assert.match(viewer, /id="lifecycleFrameShell" hidden/);
+    assert.match(viewer, /building-ledger\.css\?v=20261013-15/);
   });
 });
 
