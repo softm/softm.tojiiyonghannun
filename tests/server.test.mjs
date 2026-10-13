@@ -99,15 +99,54 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     assert.match(home, /target="tojiiyonghannunPropertyDetails"/);
     assert.match(home, /id="shareParcel"/);
     assert.match(home, /summary-address-line[\s\S]*id="summaryTitle"[\s\S]*id="shareParcel"/);
-    assert.match(home, /styles\.css\?v=20261013-19/);
+    assert.match(home, /styles\.css\?v=20261013-22/);
+    assert.match(home, /정부기관 공식 앱이 아닌 독립적인 민간 정보 서비스/);
+    assert.doesNotMatch(home, /aria-label="공식 정보 출처"/);
     assert.match(home, />건축물대장 보기/);
     assert.match(viewer, /data-document-tab="building"/);
     assert.match(viewer, /data-document-tab="landRegister"/);
+    assert.match(viewer, /data-document-tab="cadastralMap"/);
+    assert.match(viewer, /data-document-tab="coOwnerRegister"/);
+    assert.match(viewer, /data-document-tab="registry"/);
     assert.match(viewer, /data-document-tab="landUse"/);
     assert.match(viewer, /data-document-tab="eum"/);
     assert.match(viewer, /id="eumExternalLink"/);
     assert.match(viewer, /data-document-tab="districtPlan"/);
     assert.match(viewer, /data-document-tab="lifecycle"/);
+  });
+});
+
+test("토지대장 공개정보 API와 공식 발급 링크를 제공한다", async () => {
+  const fetchImpl = async (url) => {
+    const target = new URL(url);
+    assert.equal(target.pathname, "/ned/data/ladfrlList");
+    assert.equal(target.searchParams.get("pnu"), pnu);
+    return mockResponse({ladfrlVOList: {ladfrlVOList: [{
+      pnu,
+      ldCodeNm: "대구광역시 동구 신천동",
+      mnnmSlno: "551-23",
+      regstrSeCodeNm: "토지대장",
+      lndcgrCodeNm: "대",
+      lndpclAr: "136",
+      posesnSeCodeNm: "개인",
+      cnrsPsnCo: "0",
+      ladFrtlScNm: "1:1200",
+      lastUpdtDt: "2026-09-04"
+    }]}});
+  };
+  await withServer(fetchImpl, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/land-register?pnu=${pnu}`);
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.record.landCategory, "대");
+    assert.equal(payload.record.area, 136);
+    assert.equal(payload.record.cadastralScale, "1:1200");
+
+    const home = await (await fetch(`${baseUrl}/`)).text();
+    assert.match(home, /id="cadastralMapLink"/);
+    assert.match(home, /id="coOwnerRegisterLink"/);
+    assert.match(home, /id="registryLink"/);
+    assert.match(home, /id="landRegisterPreview"/);
   });
 });
 

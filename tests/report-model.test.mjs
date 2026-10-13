@@ -29,7 +29,7 @@ test("조회 결과를 PDF 보고서 모델로 변환한다", () => {
   assert.match(model.notice, /공식 토지이용계획확인서가 아닙니다/);
 });
 
-test("건축물·실거래·경매와 공식 확인 경로를 PDF 보고서에 모두 포함한다", () => {
+test("토지대장·건축물·실거래·경매와 공식 확인 경로를 PDF 보고서에 모두 포함한다", () => {
   const model = buildReportModel({
     address: "경기도 부천시 소사구 옥길동 742-1",
     officialUrl: "https://www.eum.go.kr/example",
@@ -41,6 +41,18 @@ test("건축물·실거래·경매와 공식 확인 경로를 PDF 보고서에 �
     pnu: "4119410600107420001",
     roadAddress: "경기도 부천시 소사구 양지로 234-10"
   }, new Date("2026-10-13T03:00:00Z"), {
+    landRegister: {
+      legalDong: "경기도 부천시 소사구 옥길동",
+      lotNumber: "742-1",
+      ledgerType: "토지대장",
+      landCategory: "대",
+      area: 65921.4,
+      ownershipType: "법인",
+      coOwnerCount: 2,
+      cadastralMapType: "지적도",
+      cadastralScale: "1:600",
+      lastUpdated: "2026-09-04"
+    },
     buildings: [{
       name: "옥길 한신더휴",
       dongName: "102동",
@@ -67,12 +79,18 @@ test("건축물·실거래·경매와 공식 확인 경로를 PDF 보고서에 �
     }
   });
 
-  const [building, transaction, trend, recent, official] = model.supplementSections;
+  const [landRegister, building, transaction, trend, recent, official] = model.supplementSections;
+  assert.deepEqual(landRegister.rows[0], ["대장 구분", "토지대장"]);
+  assert.deepEqual(landRegister.rows[5], ["공유인수", "2명"]);
+  assert.deepEqual(landRegister.rows[6], ["지적도 정보", "지적도 · 축척 1:600"]);
   assert.deepEqual(building.rows[0], ["옥길 한신더휴 · 102동", "공동주택", "지상 29층 · 지하 2층", "612.34㎡ / 14,396.11㎡", "2017.10.27"]);
   assert.equal(transaction.rows[0][1], "해당 필지·단지 거래");
   assert.equal(transaction.rows[4][1], "8억 1,625만원");
   assert.deepEqual(trend.rows[0], ["2026.09", "8,145,351원/㎡", "3건"]);
   assert.deepEqual(recent.rows[0], ["2026.09.12", "옥길한신더휴", "7억 9,800만원", "97.97㎡ · 11층", "8,145,351원/㎡"]);
   assert.match(official.rows[1][1], /building-ledger\.html\?pnu=4119410600107420001/);
-  assert.match(official.rows[3][1], /courtauction\.go\.kr/);
+  assert.match(official.rows.find(([label]) => label === "토지(임야)대장 발급")[1], /gov\.kr/);
+  assert.match(official.rows.find(([label]) => label === "지적도(임야도) 등본 발급")[1], /13100000027/);
+  assert.match(official.rows.find(([label]) => label === "등기사항전부증명서")[1], /iros\.go\.kr/);
+  assert.match(official.rows.find(([label]) => label === "대한민국 법원경매정보")[1], /courtauction\.go\.kr/);
 });

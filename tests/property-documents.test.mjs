@@ -9,6 +9,7 @@ import {
   hasDistrictPlan,
   landRegisterPostFields,
   landUsePostFields,
+  normalizeLandRegisterRecord,
   normalizePropertyDocumentTab,
   normalizeBuildingRecords,
   parcelDocumentIdentity,
@@ -19,6 +20,9 @@ import {
 test("통합 보기 시작 탭은 지원 문서만 허용한다", () => {
   assert.equal(normalizePropertyDocumentTab("eum"), "eum");
   assert.equal(normalizePropertyDocumentTab("landRegister"), "landRegister");
+  assert.equal(normalizePropertyDocumentTab("cadastralMap"), "cadastralMap");
+  assert.equal(normalizePropertyDocumentTab("coOwnerRegister"), "coOwnerRegister");
+  assert.equal(normalizePropertyDocumentTab("registry"), "registry");
   assert.equal(normalizePropertyDocumentTab("districtPlan"), "districtPlan");
   assert.equal(normalizePropertyDocumentTab("unknown"), "building");
 });
@@ -56,6 +60,40 @@ test("일반·산 PNU를 국토부 대장용 코드와 본번·부번으로 변�
   });
   assert.equal(parcelDocumentIdentity(mountainPnu).registryPnu, "4119410400101680008");
   assert.equal(parcelDocumentIdentity(mountainPnu).displayJibun, "산 168-8");
+});
+
+test("VWorld 토지대장 공개정보를 화면 모델로 정규화한다", () => {
+  const record = normalizeLandRegisterRecord({ladfrlVOList: {ladfrlVOList: [{
+    pnu: ordinaryPnu,
+    ldCodeNm: "경기도 부천시 원미구 중동",
+    mnnmSlno: "168-8",
+    regstrSeCode: "1",
+    regstrSeCodeNm: "토지대장",
+    lndcgrCodeNm: "대",
+    lndpclAr: "376.9",
+    posesnSeCodeNm: "법인",
+    cnrsPsnCo: "2",
+    ladFrtlScNm: "1:600",
+    lastUpdtDt: "2026-09-04"
+  }]}});
+  assert.deepEqual(record, {
+    pnu: ordinaryPnu,
+    legalDong: "경기도 부천시 원미구 중동",
+    lotNumber: "168-8",
+    ledgerType: "토지대장",
+    landCategory: "대",
+    area: 376.9,
+    ownershipType: "법인",
+    coOwnerCount: 2,
+    cadastralMapType: "지적도",
+    cadastralScale: "1:600",
+    lastUpdated: "2026-09-04"
+  });
+  assert.equal(normalizeLandRegisterRecord({ladfrlVOList: {ladfrlVOList: []}}), null);
+  assert.equal(normalizeLandRegisterRecord({ladfrlVOList: {ladfrlVOList: [{pnu: ordinaryPnu, cnrsPsnCo: ""}]}}).coOwnerCount, null);
+  assert.match(PROPERTY_DOCUMENT_URLS.landRegisterIssue, /gov\.kr/);
+  assert.match(PROPERTY_DOCUMENT_URLS.cadastralMapIssue, /13100000027/);
+  assert.equal(new URL(PROPERTY_DOCUMENT_URLS.registryIssue).hostname, "www.iros.go.kr");
 });
 
 test("건축물·토지대장·토지이용계획 POST 필드를 구분한다", () => {
