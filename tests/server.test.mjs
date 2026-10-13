@@ -81,6 +81,7 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     assert.match(home, /id="officialLink"/);
     assert.match(home, /id="shareParcel"/);
     assert.match(home, /summary-address-line[\s\S]*id="summaryTitle"[\s\S]*id="shareParcel"/);
+    assert.match(home, /styles\.css\?v=20261013-17/);
     assert.match(home, />건축물대장 보기/);
     assert.match(viewer, /data-document-tab="building"/);
     assert.match(viewer, /data-document-tab="landRegister"/);
