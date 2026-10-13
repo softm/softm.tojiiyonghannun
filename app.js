@@ -2,7 +2,7 @@ import {buildReportModel} from "./report-model.js?v=20261013-11";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
 import {buildParcelShareUrl, parseParcelShareUrl} from "./share-model.js?v=20261013-15";
 import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
-import {hasDistrictPlan} from "./property-documents.js?v=20261012-9";
+import {PROPERTY_DOCUMENT_VIEWER_TARGET, hasDistrictPlan} from "./property-documents.js?v=20261013-16";
 import {
   requestAddressSearch,
   requestBuildingRecords,
@@ -474,7 +474,18 @@ function updatePropertyDocumentLinks(item, data) {
 
 function openPropertyDocumentViewer() {
   if (!selectedItem || !selectedData) return;
-  window.open(buildPropertyDocumentViewerUrl(selectedItem, selectedData), "_blank", "noopener,noreferrer");
+  openPropertyDocumentViewerUrl(buildPropertyDocumentViewerUrl(selectedItem, selectedData));
+}
+
+function openPropertyDocumentViewerUrl(url) {
+  const viewer = window.open(url, PROPERTY_DOCUMENT_VIEWER_TARGET);
+  viewer?.focus();
+}
+
+function handlePropertyDocumentLink(event) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  openPropertyDocumentViewerUrl(event.currentTarget.href);
 }
 
 function formatDealAmount(amount) {
@@ -1200,6 +1211,8 @@ elements.loadTransactions.addEventListener("click", () => {
 });
 elements.copyAuctionAddress.addEventListener("click", () => void copyAuctionAddress());
 elements.openPropertyDocuments.addEventListener("click", openPropertyDocumentViewer);
+[elements.propertyDocumentsLink, elements.landRegisterLink, elements.landUseLink, elements.officialLink]
+  .forEach((link) => link.addEventListener("click", handlePropertyDocumentLink));
 elements.shareParcel.addEventListener("click", () => void shareSelectedParcel());
 
 elements.form.addEventListener("submit", (event) => {

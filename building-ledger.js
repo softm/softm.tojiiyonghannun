@@ -7,16 +7,22 @@ import {
   buildingPostFields,
   landRegisterPostFields,
   landUsePostFields,
-  normalizePropertyDocumentTab,
-  parcelDocumentIdentity
-} from "./property-documents.js?v=20261013-12";
+  parcelDocumentIdentity,
+  propertyDocumentTabStorageKey,
+  resolvePropertyDocumentTab
+} from "./property-documents.js?v=20261013-16";
 
 const params = new URLSearchParams(window.location.search);
 const pnu = String(params.get("pnu") || "");
 const address = String(params.get("address") || "선택한 필지").slice(0, 160);
 const districtPlanEnabled = params.get("districtPlan") === "1";
-const initialTab = normalizePropertyDocumentTab(params.get("tab"));
 const valid = /^\d{19}$/.test(pnu);
+const tabStateKey = propertyDocumentTabStorageKey(pnu);
+const storedTab = (() => {
+  if (!tabStateKey) return null;
+  try { return window.sessionStorage.getItem(tabStateKey); } catch { return null; }
+})();
+const initialTab = resolvePropertyDocumentTab(params.has("tab") ? params.get("tab") : null, storedTab);
 const loadedTabs = new Set();
 let buildings = [];
 let activeTab = "building";
@@ -212,7 +218,7 @@ function loadTab(type) {
 
 function activateTab(type) {
   const button = elements.tabs.querySelector(`[data-document-tab="${type}"]`);
-  if (!button || button.hidden) return;
+  if (!button || button.hidden) return false;
   activeTab = type;
   elements.tabs.querySelectorAll("[data-document-tab]").forEach((tab) => {
     const active = tab === button;
@@ -225,8 +231,15 @@ function activateTab(type) {
     panel.hidden = !active;
     panel.classList.toggle("active", active);
   });
+  if (tabStateKey) {
+    try { window.sessionStorage.setItem(tabStateKey, type); } catch {}
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", type);
+    window.history.replaceState(window.history.state, "", url);
+  }
   loadTab(type);
   updateExternalButton();
+  return true;
 }
 
 function openActiveDocument() {
@@ -270,6 +283,10 @@ elements.buildingSelector.addEventListener("change", () => {
 });
 elements.openExternal.addEventListener("click", openActiveDocument);
 elements.close.addEventListener("click", () => {
+  if (tabStateKey) {
+    try { window.sessionStorage.removeItem(tabStateKey); } catch {}
+  }
+  window.name = "";
   window.close();
   window.setTimeout(() => { if (!window.closed) window.location.href = "./"; }, 100);
 });
@@ -280,6 +297,6 @@ if (!valid) {
   elements.error.hidden = false;
 } else {
   parcelDocumentIdentity(pnu);
-  if (initialTab !== "building") activateTab(initialTab);
+  if (!activateTab(initialTab)) activateTab("building");
   void loadBuildings();
 }
