@@ -11,13 +11,24 @@ import {
   landUsePostFields,
   normalizePropertyDocumentTab,
   normalizeBuildingRecords,
-  parcelDocumentIdentity
+  parcelDocumentIdentity,
+  propertyDocumentTabStorageKey,
+  resolvePropertyDocumentTab
 } from "../property-documents.js";
 
 test("통합 보기 시작 탭은 지원 문서만 허용한다", () => {
   assert.equal(normalizePropertyDocumentTab("eum"), "eum");
   assert.equal(normalizePropertyDocumentTab("landRegister"), "landRegister");
+  assert.equal(normalizePropertyDocumentTab("districtPlan"), "districtPlan");
   assert.equal(normalizePropertyDocumentTab("unknown"), "building");
+});
+
+test("통합 보기 탭은 필지별로 저장하고 명시 요청이 없을 때 복원한다", () => {
+  assert.equal(propertyDocumentTabStorageKey("4119410400101680008"), "tojiiyonghannun.property-document-tab.v1.4119410400101680008");
+  assert.equal(propertyDocumentTabStorageKey("invalid"), "");
+  assert.equal(resolvePropertyDocumentTab(null, "landUse"), "landUse");
+  assert.equal(resolvePropertyDocumentTab("eum", "landUse"), "eum");
+  assert.equal(resolvePropertyDocumentTab("unknown", "landUse"), "building");
 });
 
 const ordinaryPnu = "4119410400101680008";

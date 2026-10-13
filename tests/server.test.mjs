@@ -79,6 +79,7 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     assert.match(home, /id="landRegisterLink"/);
     assert.match(home, /id="landUseLink"/);
     assert.match(home, /id="officialLink"/);
+    assert.match(home, /target="tojiiyonghannunPropertyDetails"/);
     assert.match(home, /id="shareParcel"/);
     assert.match(home, /summary-address-line[\s\S]*id="summaryTitle"[\s\S]*id="shareParcel"/);
     assert.match(home, /styles\.css\?v=20261013-17/);
