@@ -135,6 +135,7 @@ h1 em { color: var(--green); font-style: normal; }
 .summary-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
 .summary-heading .eyebrow { justify-content: flex-start; margin-bottom: 9px; }
 .summary-heading h2 { margin: 0; font-size: clamp(25px, 4vw, 38px); letter-spacing: -.045em; }
+.summary-address-line { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .summary-heading > div > p:last-child { margin: 8px 0 0; color: var(--ink-soft); font-size: 13px; }
 .reference-badge { padding: 8px 12px; border-radius: 999px; background: #f5edda; color: #8d6728; font-size: 11px; font-weight: 900; white-space: nowrap; }
 .fact-grid { display: grid; grid-template-columns: 1.5fr .7fr .8fr 1fr; margin: 0; padding: 25px 0; border-bottom: 1px solid var(--line); }
@@ -260,7 +261,7 @@ h1 em { color: var(--green); font-style: normal; }
 .summary-actions { display: flex; gap: 10px; }
 .summary-actions--primary { flex-wrap: wrap; margin: 20px 0 24px; padding: 14px; border: 1px solid #d6e1db; border-radius: 17px; background: #f7faf8; }
 .summary-actions--secondary { justify-content: flex-end; margin-top: 24px; }
-.primary-action, .secondary-action, .download-action, .map-action, .share-action { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 22px; border-radius: 14px; font-size: 14px; font-weight: 800; text-decoration: none; cursor: pointer; }
+.primary-action, .secondary-action, .download-action, .map-action { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 22px; border-radius: 14px; font-size: 14px; font-weight: 800; text-decoration: none; cursor: pointer; }
 .primary-action { gap: 8px; border: 1px solid var(--green); background: var(--green); color: #fff; }
 .primary-action:hover { background: var(--green-dark); }
 .document-links { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); flex: 1 1 100%; gap: 8px; }
@@ -276,9 +277,10 @@ h1 em { color: var(--green); font-style: normal; }
 .download-action:hover { border-color: #8fb5a5; background: #dceee4; }
 .download-action:disabled { cursor: wait; opacity: .58; }
 .download-action svg { width: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.share-action { gap: 8px; border: 1px solid #c8d9d1; background: #fff; color: var(--green-dark); }
+.share-action { display: inline-grid; flex: 0 0 auto; place-items: center; width: 38px; height: 38px; padding: 0; border: 1px solid #c8d9d1; border-radius: 12px; background: #fff; color: var(--green-dark); cursor: pointer; }
 .share-action:hover { border-color: #8fb5a5; background: #f2f8f4; }
-.share-action svg { width: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.share-action:focus-visible { outline: 3px solid rgba(27, 113, 87, .24); outline-offset: 2px; }
+.share-action svg { width: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .legal-notice { margin: 18px 0 0; padding: 15px 17px; border-radius: 12px; background: #f5f2e9; color: #6f674f; font-size: 11px; line-height: 1.7; }
 
 .export-progress { position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(18, 39, 33, .42); backdrop-filter: blur(7px); }
