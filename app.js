@@ -322,6 +322,7 @@ function createElement(tag, className, text) {
 }
 
 function renderSearchResults(items, query) {
+  globalThis.TojiIyongAds?.hide("searchResults");
   elements.resultList.replaceChildren();
   elements.results.hidden = false;
   elements.resultQuery.textContent = `“${query}” 검색 결과`;
@@ -344,6 +345,7 @@ function renderSearchResults(items, query) {
     button.addEventListener("click", () => selectParcel(item));
     elements.resultList.append(button);
   });
+  globalThis.TojiIyongAds?.show("searchResults");
 }
 
 async function searchAddress(query) {
@@ -354,6 +356,8 @@ async function searchAddress(query) {
   setSearchLoading(true);
   setStatus("주소와 연결된 필지를 찾고 있어요.");
   hideLookupProgress();
+  globalThis.TojiIyongAds?.hide("searchResults");
+  globalThis.TojiIyongAds?.hide("parcelDetail");
   elements.results.hidden = true;
   elements.summary.hidden = true;
   try {
@@ -803,6 +807,7 @@ function renderSummary(data, item) {
   updatePropertyDocumentLinks(item, data);
   elements.viewMap.hidden = !(Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)));
   elements.summary.hidden = false;
+  globalThis.TojiIyongAds?.show("parcelDetail");
 }
 
 function setMapLoading(loading, message = "지도를 불러오고 있어요.") {
@@ -1063,6 +1068,8 @@ async function selectParcel(item) {
   selectedData = null;
   setSearchViewMode("active");
   rememberParcel(item);
+  globalThis.TojiIyongAds?.hide("searchResults");
+  globalThis.TojiIyongAds?.hide("parcelDetail");
   elements.results.hidden = true;
   elements.summary.hidden = true;
   showLookupProgress(item);
@@ -1231,6 +1238,7 @@ elements.input.addEventListener("input", () => {
   renderHistoryAutocomplete();
   if (!elements.input.value.trim() && elements.summary.hidden) {
     searchController?.abort();
+    globalThis.TojiIyongAds?.hide("searchResults");
     elements.results.hidden = true;
     setStatus("");
     setSearchViewMode("idle");
@@ -1271,6 +1279,8 @@ elements.searchAgain.addEventListener("click", () => {
   buildingController?.abort();
   selectedBuildings = [];
   hideLookupProgress();
+  globalThis.TojiIyongAds?.hide("searchResults");
+  globalThis.TojiIyongAds?.hide("parcelDetail");
   elements.summary.hidden = true;
   elements.results.hidden = true;
   setSearchViewMode("idle");
@@ -1292,6 +1302,7 @@ elements.clearHistory.addEventListener("click", () => {
   setStatus("최근 조회 기록을 삭제했습니다.");
 });
 
+globalThis.TojiIyongAds?.init();
 renderHistory();
 const sharedParcel = parseParcelShareUrl(window.location.href);
 if (sharedParcel) {

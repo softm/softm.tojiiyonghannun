@@ -7,7 +7,7 @@
     <meta name="description" content="주소 검색으로 토지이용계획 핵심 내용을 간편하게 확인하는 토지이용한눈" />
     <title>토지이용한눈 | 주소로 보는 토지이용계획</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-17" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-19" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -71,6 +71,10 @@
             <b id="resultCount"></b>
           </div>
           <div class="result-list" id="resultList"></div>
+          <aside class="adfit-zone" id="searchResultsAd" aria-label="광고" hidden>
+            <span class="adfit-label">광고</span>
+            <div class="adfit-host" data-adfit-host></div>
+          </aside>
         </section>
 
         <section class="lookup-progress" id="lookupProgress" aria-labelledby="lookupProgressTitle" aria-live="polite" aria-busy="true" hidden>
@@ -111,31 +115,50 @@
         </div>
 
         <div class="summary-actions summary-actions--primary" aria-label="선택한 필지 주요 기능">
-          <nav class="document-links" aria-label="대장·토지이음 통합 보기 바로가기">
-            <a class="document-link document-link--primary" id="propertyDocumentsLink" href="./building-ledger.html?tab=building" target="tojiiyonghannunPropertyDetails">
-              대장·토지이음 통합 보기 <span aria-hidden="true">↗</span>
-            </a>
-            <a class="document-link" id="landRegisterLink" href="./building-ledger.html?tab=landRegister" target="tojiiyonghannunPropertyDetails">
-              토지대장 <span aria-hidden="true">↗</span>
-            </a>
-            <a class="document-link" id="landUseLink" href="./building-ledger.html?tab=landUse" target="tojiiyonghannunPropertyDetails">
-              토지이용계획확인원 <span aria-hidden="true">↗</span>
-            </a>
-            <a class="document-link" id="officialLink" href="./building-ledger.html?tab=eum" target="tojiiyonghannunPropertyDetails">
-              토지이음 <span aria-hidden="true">↗</span>
-            </a>
-          </nav>
-          <button class="map-action" id="viewMap" type="button" hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
-            지도에서 보기
-          </button>
-          <button class="download-action" id="downloadReport" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
-            PDF 보고서 보기
-          </button>
+          <section class="action-cluster action-cluster--documents" aria-labelledby="documentActionsTitle">
+            <header class="action-cluster__head">
+              <div><small>원문 확인</small><h3 id="documentActionsTitle">공식 자료</h3></div>
+              <p>통합해서 보거나 필요한 문서만 바로 여세요.</p>
+            </header>
+            <nav class="document-links" aria-label="대장·토지이음 바로가기">
+              <a class="document-link document-link--primary" id="propertyDocumentsLink" href="./building-ledger.html?tab=building" target="tojiiyonghannunPropertyDetails">
+                <span class="document-link__copy"><strong>대장·토지이음 통합 보기</strong><small>건축물·토지 관련 원문을 한 화면에서 확인</small></span>
+                <span class="document-link__arrow" aria-hidden="true">↗</span>
+              </a>
+              <a class="document-link" id="landRegisterLink" href="./building-ledger.html?tab=landRegister" target="tojiiyonghannunPropertyDetails">
+                토지대장 <span aria-hidden="true">↗</span>
+              </a>
+              <a class="document-link" id="landUseLink" href="./building-ledger.html?tab=landUse" target="tojiiyonghannunPropertyDetails">
+                토지이용계획확인원 <span aria-hidden="true">↗</span>
+              </a>
+              <a class="document-link" id="officialLink" href="./building-ledger.html?tab=eum" target="tojiiyonghannunPropertyDetails">
+                토지이음 <span aria-hidden="true">↗</span>
+              </a>
+            </nav>
+          </section>
+          <section class="action-cluster action-cluster--tools" aria-labelledby="toolActionsTitle">
+            <header class="action-cluster__head">
+              <div><small>내보내기</small><h3 id="toolActionsTitle">지도·보고서</h3></div>
+            </header>
+            <div class="utility-actions">
+              <button class="map-action" id="viewMap" type="button" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+                지도에서 보기
+              </button>
+              <button class="download-action" id="downloadReport" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
+                PDF 보고서 보기
+              </button>
+            </div>
+          </section>
         </div>
 
         <dl class="fact-grid" id="factGrid"></dl>
+
+        <aside class="adfit-zone adfit-zone--detail" id="parcelDetailAd" aria-label="광고" hidden>
+          <span class="adfit-label">광고</span>
+          <div class="adfit-host" data-adfit-host></div>
+        </aside>
 
         <article class="building-summary" id="buildingSummary">
           <span class="building-summary__icon" aria-hidden="true">
@@ -328,10 +351,12 @@
     </dialog>
 
     <script src="./runtime-config.js"></script>
+    <script src="./adfit-config.js?v=20261013-1"></script>
+    <script src="./adfit.js?v=20261013-1"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
     <script type="module" src="./report-export.js?v=20261013-10"></script>
-    <script type="module" src="./app.js?v=20261013-18"></script>
+    <script type="module" src="./app.js?v=20261013-19"></script>
   </body>
 </html>
