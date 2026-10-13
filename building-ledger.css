@@ -85,6 +85,7 @@ button, select { font: inherit; }
 .building-item dd { margin: 2px 0 0; font-size: 10px; font-weight: 800; }
 .building-item button { width: 100%; min-height: 37px; border: 1px solid #b9d1c6; border-radius: 9px; background: #edf7f2; color: #126148; font-size: 10px; font-weight: 850; cursor: pointer; }
 .panel-empty { display: grid; place-items: center; min-height: 180px; padding: 30px; color: #697c75; font-size: 12px; line-height: 1.7; text-align: center; }
+.panel-empty[hidden] { display: none; }
 .viewer-error { height: 100%; display: grid; place-content: center; justify-items: center; gap: 8px; border: 1px solid #d2ded8; border-radius: 14px; background: #fff; text-align: center; }
 .viewer-error[hidden] { display: none; }
 .viewer-error p { margin: 0 0 8px; color: #687b75; font-size: 12px; }

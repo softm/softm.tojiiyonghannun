@@ -46,7 +46,8 @@ const elements = {
   registryPnu: $("#registryPnu"),
   copyRegistryAddress: $("#copyRegistryAddress"),
   eumExternalLink: $("#eumExternalLink"),
-  lifecycleTab: $("#tabLifecycle"),
+  lifecycleEmpty: $("#lifecycleEmpty"),
+  lifecycleFrameShell: $("#lifecycleFrameShell"),
   districtPlanTab: $("#tabDistrictPlan")
 };
 
@@ -111,12 +112,19 @@ function submitPostToFrame(type, action, fields) {
 
 function setLifecycleAvailability() {
   const available = selectedBuildingIndex >= 0 && Boolean(buildBuildingLifecycleUrl(pnu, buildings[selectedBuildingIndex]?.id));
-  elements.lifecycleTab.hidden = !available;
-  if (!available && activeTab === "lifecycle") activateTab("building");
+  elements.lifecycleEmpty.hidden = available;
+  elements.lifecycleFrameShell.hidden = !available;
+  if (!available) {
+    loadedTabs.delete("lifecycle");
+    frameConfig.lifecycle.frame.removeAttribute("src");
+  } else if (activeTab === "lifecycle") {
+    loadTab("lifecycle");
+  }
 }
 
 function updateExternalButton() {
-  const unavailable = activeTab === "building" && selectedBuildingIndex < 0;
+  const needsBuildingSelection = ["building", "lifecycle"].includes(activeTab);
+  const unavailable = needsBuildingSelection && selectedBuildingIndex < 0;
   elements.openExternal.disabled = unavailable;
   const labels = {
     cadastralMap: "정부24에서 발급",
@@ -264,8 +272,16 @@ function loadTab(type) {
     frameConfig[type].frame.src = buildDistrictPlanUrl(pnu);
   }
   if (type === "lifecycle") {
+    const lifecycleUrl = buildBuildingLifecycleUrl(pnu, buildings[selectedBuildingIndex]?.id);
+    if (!lifecycleUrl) {
+      elements.lifecycleEmpty.hidden = false;
+      elements.lifecycleFrameShell.hidden = true;
+      return;
+    }
+    elements.lifecycleEmpty.hidden = true;
+    elements.lifecycleFrameShell.hidden = false;
     showFrameLoading(type);
-    frameConfig[type].frame.src = buildBuildingLifecycleUrl(pnu, buildings[selectedBuildingIndex]?.id);
+    frameConfig[type].frame.src = lifecycleUrl;
   }
   loadedTabs.add(type);
 }
@@ -308,7 +324,10 @@ function openActiveDocument() {
   if (activeTab === "landUse") submitPost(PROPERTY_DOCUMENT_URLS.landUse, landUsePostFields(pnu), "_blank");
   if (activeTab === "eum") window.open(buildEumLandUseUrl(pnu), "_blank", "noopener,noreferrer");
   if (activeTab === "districtPlan") window.open(buildDistrictPlanUrl(pnu), "_blank", "noopener,noreferrer");
-  if (activeTab === "lifecycle") window.open(buildBuildingLifecycleUrl(pnu, buildings[selectedBuildingIndex]?.id), "_blank", "noopener,noreferrer");
+  if (activeTab === "lifecycle") {
+    const lifecycleUrl = buildBuildingLifecycleUrl(pnu, buildings[selectedBuildingIndex]?.id);
+    if (lifecycleUrl) window.open(lifecycleUrl, "_blank", "noopener,noreferrer");
+  }
 }
 
 elements.address.textContent = valid ? `${address} · PNU ${pnu}` : "필지 정보가 올바르지 않습니다.";
