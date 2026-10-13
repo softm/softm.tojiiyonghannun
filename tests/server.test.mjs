@@ -51,6 +51,23 @@ test("실거래·경매 UI와 브라우저 런타임 설정을 제공한다", as
   });
 });
 
+test("검색 결과와 필지 상세에 AdFit 지면과 운영 설정을 제공한다", async () => {
+  await withServer(fetch, async (baseUrl) => {
+    const html = await (await fetch(`${baseUrl}/`)).text();
+    assert.match(html, /id="searchResultsAd"/);
+    assert.match(html, /id="parcelDetailAd"/);
+    assert.match(html, /adfit-config\.js\?v=20261013-1/);
+    assert.match(html, /adfit\.js\?v=20261013-1/);
+
+    const configResponse = await fetch(`${baseUrl}/adfit-config.js`);
+    const runtimeResponse = await fetch(`${baseUrl}/adfit.js`);
+    assert.equal(configResponse.status, 200);
+    assert.equal(runtimeResponse.status, 200);
+    assert.match(await configResponse.text(), /DAN-4nmORIg1At492nrf/);
+    assert.match(await runtimeResponse.text(), /AdMobNative/);
+  });
+});
+
 test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제공한다", async () => {
   const fetchImpl = async (url) => {
     const target = new URL(url);
@@ -82,7 +99,7 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     assert.match(home, /target="tojiiyonghannunPropertyDetails"/);
     assert.match(home, /id="shareParcel"/);
     assert.match(home, /summary-address-line[\s\S]*id="summaryTitle"[\s\S]*id="shareParcel"/);
-    assert.match(home, /styles\.css\?v=20261013-17/);
+    assert.match(home, /styles\.css\?v=20261013-19/);
     assert.match(home, />건축물대장 보기/);
     assert.match(viewer, /data-document-tab="building"/);
     assert.match(viewer, /data-document-tab="landRegister"/);
