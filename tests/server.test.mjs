@@ -99,7 +99,7 @@ test("건축물·토지대장 통합 뷰어와 건축물 공개정보 API를 제
     assert.match(home, /target="tojiiyonghannunPropertyDetails"/);
     assert.match(home, /id="shareParcel"/);
     assert.match(home, /summary-address-line[\s\S]*id="summaryTitle"[\s\S]*id="shareParcel"/);
-    assert.match(home, /styles\.css\?v=20261013-22/);
+    assert.match(home, /styles\.css\?v=20261013-23/);
     assert.match(home, /정부기관 공식 앱이 아닌 독립적인 민간 정보 서비스/);
     assert.doesNotMatch(home, /aria-label="공식 정보 출처"/);
     assert.match(home, />건축물대장 보기/);
@@ -155,8 +155,14 @@ test("지도 화면은 현재 위치 기반 필지 조회 동작을 제공한다
     const response = await fetch(`${baseUrl}/`);
     const html = await response.text();
     const script = await (await fetch(`${baseUrl}/app.js`)).text();
+    const styles = await (await fetch(`${baseUrl}/styles.css`)).text();
     assert.match(html, /id="currentLocation"/);
     assert.match(html, />현재 위치</);
+    assert.match(html, /styles\.css\?v=20261013-23/);
+    assert.match(styles, /\.map-dialog\s*\{[^}]*height:\s*min\(850px, calc\(100dvh - 28px\)\)[^}]*overflow:\s*hidden/);
+    assert.match(styles, /\.map-dialog__panel\s*\{[^}]*height:\s*100%[^}]*grid-template-rows:\s*auto auto minmax\(260px, 1fr\) auto/);
+    assert.match(styles, /\.map-dialog__foot\s*\{[^}]*z-index:\s*10[^}]*border-top:/);
+    assert.match(styles, /\.map-dialog__panel\s*\{[^}]*grid-template-rows:\s*auto auto minmax\(0, 1fr\) auto/);
     assert.match(script, /navigator\.geolocation\.getCurrentPosition/);
     assert.match(script, /await chooseMapPoint\(\[longitude, latitude\]\)/);
   });
