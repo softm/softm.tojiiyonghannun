@@ -67,6 +67,29 @@ import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js?v=20261012
     </article>`;
   }
 
+  function supplementSectionPages(model) {
+    return (model.supplementSections || []).flatMap((section) => {
+      if (section.skipWhenEmpty && !section.rows?.length) return [];
+      const pageSize = Math.max(1, Number(section.pageSize) || 14);
+      const chunks = [];
+      for (let index = 0; index < (section.rows || []).length; index += pageSize) {
+        chunks.push(section.rows.slice(index, index + pageSize));
+      }
+      if (!chunks.length) chunks.push([]);
+      return chunks.map((rows, index) => {
+        const chunkedSection = {...section, rows};
+        const continuation = chunks.length > 1 ? ` (${index + 1}/${chunks.length})` : "";
+        const isLast = index === chunks.length - 1;
+        return `<article class="download-report" aria-hidden="true">
+          ${pageHeaderHtml(model, {title: section.pageTitle || section.title, compact: true})}
+          <section class="download-report__continuation"><h2>${escapeHtml(section.title)}${continuation}</h2>${sectionHtml(chunkedSection)}</section>
+          ${isLast && section.notice ? `<p class="download-report__notice">${escapeHtml(section.notice)}</p>` : ""}
+          <footer class="download-report__footer"><span>${escapeHtml(model.source)}</span><span>토지이용한눈 자동 생성 보고서</span></footer>
+        </article>`;
+      });
+    });
+  }
+
   function reportPagesHtml(model) {
     const overviewSections = model.sections.slice(0, 3);
     const restrictionSection = model.sections[3] || {title: "주요 행위제한 및 근거 법령", headers: [], rows: []};
@@ -86,6 +109,8 @@ import {composeParcelMap, composeVworldTileMap} from "./parcel-map.js?v=20261012
 
     const vicinityPage = vicinityPageHtml(model);
     if (vicinityPage) pages.push(vicinityPage);
+
+    pages.push(...supplementSectionPages(model));
 
     if (restrictionSection.rows.length) {
       chunks.forEach((rows, index) => {

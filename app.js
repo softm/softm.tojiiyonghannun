@@ -1,4 +1,4 @@
-import {buildReportModel} from "./report-model.js?v=20261012-9";
+import {buildReportModel} from "./report-model.js?v=20261013-11";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
 import {buildParcelShareUrl, parseParcelShareUrl} from "./share-model.js?v=20261013-15";
 import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
@@ -138,6 +138,8 @@ let mapLocationRequestId = 0;
 let transactionController;
 let transactionAutoSelectionToken = 0;
 let selectedTransactionType = "land";
+let selectedTransactionResult = null;
+let transactionInitializationPromise = Promise.resolve();
 let buildingController;
 let selectedBuildings = [];
 
@@ -500,6 +502,7 @@ function updateTransactionType(type) {
   if (!TRANSACTION_TYPES[type]) return;
   transactionController?.abort();
   selectedTransactionType = type;
+  selectedTransactionResult = null;
   elements.transactionTypeTabs.querySelectorAll("[data-transaction-type]").forEach((button) => {
     const active = button.dataset.transactionType === type;
     button.classList.toggle("active", active);
@@ -544,7 +547,7 @@ async function initializeTransactionPanel(item, data) {
   elements.transactionTypeTabs.querySelector(`[data-transaction-type="${recommendation}"]`)?.classList.add("recommended");
   updateTransactionType(recommendation);
   elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[recommendation].label} 유형으로 최근 24개월을 자동 조회합니다.`;
-  if (hasMolitApiKey()) void loadTransactionsForSelectedParcel({automatic: true});
+  if (hasMolitApiKey()) await loadTransactionsForSelectedParcel({automatic: true});
 }
 
 function appendTransactionStat(label, value, note = "") {
@@ -593,6 +596,7 @@ function renderTransactionList(items, definition) {
 }
 
 function renderTransactionResult(result) {
+  selectedTransactionResult = result;
   elements.transactionResults.hidden = false;
   const exact = result.scope === "exact";
   elements.transactionScopeBadge.textContent = exact ? "해당 필지·단지 거래" : "법정동 유사 거래";
@@ -628,6 +632,7 @@ async function loadTransactionsForSelectedParcel({automatic = false} = {}) {
   if (!selectedItem || !selectedData) return;
   transactionController?.abort();
   transactionController = new AbortController();
+  selectedTransactionResult = null;
   elements.loadTransactions.disabled = true;
   elements.loadTransactions.textContent = "조회 중…";
   elements.transactionResults.hidden = true;
@@ -783,7 +788,7 @@ function renderSummary(data, item) {
   renderZoneList(elements.otherLaws, [...(data.otherLaws || []), ...(data.decree || [])]);
   renderRestrictions(data.restrictions);
   resetTransactionPanel(item, data);
-  void initializeTransactionPanel(item, data);
+  transactionInitializationPromise = initializeTransactionPanel(item, data);
   updatePropertyDocumentLinks(item, data);
   elements.viewMap.hidden = !(Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)));
   elements.summary.hidden = false;
@@ -1091,7 +1096,12 @@ elements.downloadReport.addEventListener("click", async () => {
   elements.exportProgress.hidden = false;
   updateExportProgress({percent: 5, message: "조회 내용을 정리하는 중입니다."});
   try {
-    const model = buildReportModel(selectedData, selectedItem);
+    updateExportProgress({percent: 7, message: "건축물·실거래 정보를 보고서에 모으고 있어요."});
+    await transactionInitializationPromise;
+    const model = buildReportModel(selectedData, selectedItem, new Date(), {
+      buildings: selectedBuildings,
+      transaction: selectedTransactionResult
+    });
     if (usesDirectBrowserApi() && model.vicinity) {
       model.vicinity.imageUrl = "";
       model.vicinity.useTileMap = true;
@@ -1181,11 +1191,13 @@ elements.transactionTypeTabs.addEventListener("click", (event) => {
     updateTransactionType(button.dataset.transactionType);
     if (selectedItem && selectedData && hasMolitApiKey()) {
       elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[selectedTransactionType].label} 유형으로 최근 24개월을 바로 조회합니다.`;
-      void loadTransactionsForSelectedParcel();
+      transactionInitializationPromise = loadTransactionsForSelectedParcel();
     }
   }
 });
-elements.loadTransactions.addEventListener("click", () => void loadTransactionsForSelectedParcel());
+elements.loadTransactions.addEventListener("click", () => {
+  transactionInitializationPromise = loadTransactionsForSelectedParcel();
+});
 elements.copyAuctionAddress.addEventListener("click", () => void copyAuctionAddress());
 elements.openPropertyDocuments.addEventListener("click", openPropertyDocumentViewer);
 elements.shareParcel.addEventListener("click", () => void shareSelectedParcel());
@@ -1241,6 +1253,8 @@ elements.searchAgain.addEventListener("click", () => {
   closeReportViewer();
   selectedItem = null;
   selectedData = null;
+  selectedTransactionResult = null;
+  transactionInitializationPromise = Promise.resolve();
   buildingController?.abort();
   selectedBuildings = [];
   hideLookupProgress();

@@ -24,7 +24,129 @@ function formatPrice(amount, year) {
   return year ? `${price} (${year}년 기준)` : price;
 }
 
-export function buildReportModel(data, item, generatedAt = new Date()) {
+function formatNumber(value, suffix = "") {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? `${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(number)}${suffix}` : "-";
+}
+
+function formatBuildingDate(value) {
+  const digits = clean(value).replace(/\D/g, "");
+  return digits.length === 8 ? `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}` : valueOrDash(value);
+}
+
+function formatContractDate(value) {
+  return valueOrDash(value).replaceAll("-", ".");
+}
+
+function formatDealAmount(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return "-";
+  const billion = Math.floor(amount / 10000);
+  const remainder = Math.round(amount % 10000);
+  return [billion ? `${billion}억` : "", remainder ? `${new Intl.NumberFormat("ko-KR").format(remainder)}만원` : ""].filter(Boolean).join(" ") || "-";
+}
+
+function formatUnitPrice(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? `${new Intl.NumberFormat("ko-KR").format(Math.round(amount))}원/㎡` : "-";
+}
+
+function buildingName(building, index) {
+  return clean([building?.name, building?.dongName && building.dongName !== building.name ? building.dongName : ""].filter(Boolean).join(" · ")) || `건축물 ${index + 1}`;
+}
+
+function buildSupplementSections(data, item, context, address, pnu) {
+  const buildings = Array.isArray(context?.buildings) ? context.buildings : [];
+  const transaction = context?.transaction || null;
+  const scope = transaction?.scope === "exact" ? "해당 필지·단지 거래" : "법정동 유사 거래";
+  const transactionLabel = clean(transaction?.definition?.label || transaction?.type) || "선택 유형";
+  const transactionNotes = transaction
+    ? [
+      `정상 거래 ${Number(transaction.totalCount || 0)}건`,
+      transaction.cancelledCount ? `취소 ${transaction.cancelledCount}건 제외` : "",
+      transaction.failedMonths ? `${transaction.failedMonths}개월 조회 실패` : "",
+      transaction.truncated ? "일부 월 최대 5페이지 표시" : ""
+    ].filter(Boolean).join(" · ")
+    : "보고서 생성 시 조회 결과가 없거나 공공데이터 조회를 완료하지 못했습니다.";
+  const officialUrl = clean(data?.officialUrl) || `https://www.eum.go.kr/web/ar/lu/luLandDet.jsp?chk=0&isNoScr=script&mode=search&pnu=${encodeURIComponent(pnu)}&selGbn=umd`;
+  const integratedUrl = `https://tojiiyonghannun.designboard.net/building-ledger.html?pnu=${encodeURIComponent(pnu)}&tab=building`;
+
+  return [
+    {
+      title: `건축물대장 요약 (${buildings.length}개)`,
+      pageTitle: "건축물대장 요약",
+      pageSize: 14,
+      headers: ["건축물", "주용도", "층수", "건축/연면적", "사용승인"],
+      rows: buildings.map((building, index) => [
+        buildingName(building, index),
+        valueOrDash(building?.use),
+        [building?.groundFloors ? `지상 ${building.groundFloors}층` : "", building?.undergroundFloors ? `지하 ${building.undergroundFloors}층` : ""].filter(Boolean).join(" · ") || "-",
+        `${formatNumber(building?.buildingArea, "㎡")} / ${formatNumber(building?.totalArea, "㎡")}`,
+        formatBuildingDate(building?.approvalDate)
+      ]),
+      notice: buildings.length ? "필지에서 확인된 건축물 목록의 주요 항목입니다. 세부 대장 원문은 대장·토지이음 통합 보기에서 확인하세요." : "이 필지에서 확인된 건축물이 없거나 건축물 공개정보를 불러오지 못했습니다."
+    },
+    {
+      title: `${transactionLabel} 최근 24개월 실거래 요약`,
+      pageTitle: "실거래 참고",
+      pageSize: 16,
+      kind: "keyValue",
+      rows: [
+        ["조회 범위", transaction ? scope : "조회 결과 없음"],
+        ["조회 유형", transactionLabel],
+        ["거래 건수", transaction ? `${Number(transaction.totalCount || 0)}건` : "-"],
+        ["최근 거래일", transaction?.latestDate ? formatContractDate(transaction.latestDate) : "-"],
+        ["거래금액 중앙값", formatDealAmount(transaction?.medianAmount)],
+        ["㎡당 중앙값", formatUnitPrice(transaction?.medianUnitPrice)],
+        ["㎡당 거래 범위", transaction?.minUnitPrice ? `${formatUnitPrice(transaction.minUnitPrice)} ~ ${formatUnitPrice(transaction.maxUnitPrice)}` : "-"],
+        ["조회 상태", transactionNotes]
+      ],
+      notice: "실거래가는 일반시세·감정가·미래가치가 아니며, 일부 유형은 개인정보 보호를 위해 지번이 일부만 공개됩니다."
+    },
+    {
+      title: "월별 ㎡당 중간가격",
+      pageTitle: "실거래 월별 추이",
+      pageSize: 24,
+      skipWhenEmpty: true,
+      headers: ["계약월", "㎡당 중간가격", "거래 건수"],
+      rows: (transaction?.trend || []).map((entry) => [
+        clean(entry.month).replace(/^(\d{4})(\d{2})$/, "$1.$2"),
+        formatUnitPrice(entry.medianUnitPrice),
+        `${Number(entry.count || 0)}건`
+      ])
+    },
+    {
+      title: "최근 거래 목록",
+      pageTitle: "실거래 최근 거래",
+      pageSize: 12,
+      skipWhenEmpty: true,
+      headers: ["계약일", "건물·지번", "거래금액", "면적·층", "㎡당 가격"],
+      rows: (transaction?.items || []).slice(0, 12).map((entry) => [
+        formatContractDate(entry.contractDate),
+        valueOrDash(entry.buildingName || [entry.legalDong, entry.jibun].filter(Boolean).join(" ")),
+        formatDealAmount(entry.amount),
+        [entry.area ? `${formatNumber(entry.area, "㎡")}` : "", entry.floor ? `${entry.floor}층` : "", entry.landCategory || entry.mainUse || ""].filter(Boolean).join(" · ") || "-",
+        formatUnitPrice(entry.unitPrice)
+      ])
+    },
+    {
+      title: "공식 원문·연계 확인 경로",
+      pageTitle: "공식 확인 경로",
+      pageSize: 12,
+      kind: "keyValue",
+      rows: [
+        ["토지이음 원문", officialUrl],
+        ["대장·토지이음 통합 보기", integratedUrl],
+        ["국토교통부 실거래가 공개시스템", "https://rt.molit.go.kr/"],
+        ["대한민국 법원경매정보", "https://www.courtauction.go.kr/"],
+        ["경매 검색 주소", address]
+      ],
+      notice: "경매 사건은 자동 매칭하지 않습니다. 주소를 복사해 대한민국 법원경매정보에서 직접 확인하세요."
+    }
+  ];
+}
+
+export function buildReportModel(data, item, generatedAt = new Date(), context = {}) {
   const address = clean(data?.address || item?.parcelAddress || item?.primaryAddress || "선택한 필지");
   const pnu = clean(item?.pnu || data?.pnu);
   const longitude = Number(item?.longitude);
@@ -79,7 +201,8 @@ export function buildReportModel(data, item, generatedAt = new Date()) {
         rows: restrictions
       }
     ],
-    source: "출처: 토지이음 · 공간정보 오픈플랫폼 VWorld",
+    supplementSections: buildSupplementSections(data, item, context, address, pnu),
+    source: "출처: 토지이음 · 공간정보 오픈플랫폼 VWorld · 국토교통부 실거래가 공개시스템 · 대한민국 법원경매정보",
     notice: "이 보고서는 공개된 정보를 이해하기 쉽게 정리한 참고자료이며 공식 토지이용계획확인서가 아닙니다. 인허가, 거래 등 법적 판단이 필요한 경우 토지이음 원문과 관계기관을 통해 다시 확인하세요."
   };
 }
