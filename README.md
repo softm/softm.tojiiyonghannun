@@ -16,6 +16,13 @@ npm start
 
 GitHub Pages의 `tojiiyonghannun.designboard.net`에서는 등록 도메인 전용 VWorld 브라우저 키와 JSONP를 사용해 주소·건물명·필지 검색을 직접 처리합니다. 토지이음은 CORS 허용 응답을 직접 조회하며, 보고서 지도는 CORS가 허용된 VWorld 항공·도로 타일을 브라우저에서 합성합니다. 브라우저 키는 공개 클라이언트 식별자이므로 반드시 해당 운영 도메인으로 제한된 키만 사용합니다.
 
+## VWorld 운영키 신청
+
+운영키 신청/재신청 시에는 실제 코드에서 사용하는 API만 선택합니다. 현재 코드 기준으로 검색 API, 2D데이터 API, 국가중점 API를 사용하며, 지도 배경 타일 항목은 VWorld 신청 화면의 분류 기준에 맞는 항목 하나만 추가 선택합니다. 이미지 API·지오코더·WMS/WFS·범례·3D·모바일 전용 API는 현재 운영 웹 기준으로 사용하지 않습니다.
+
+반려 대응용 상세 체크리스트와 신청 문구는 [docs/VWORLD_OPERATION_KEY_RESUBMISSION.md](./docs/VWORLD_OPERATION_KEY_RESUBMISSION.md)를 기준으로 관리합니다.
+
+
 ## 기능
 
 - 도로명·지번·건물명 통합 검색
