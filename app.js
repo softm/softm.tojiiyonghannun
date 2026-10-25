@@ -340,16 +340,16 @@ function createElement(tag, className, text) {
 
 function renderSearchResults(items, query) {
   globalThis.TojiIyongAds?.hide("searchResults");
-  elements.resultList.replaceChildren();
+  ["resultList1","resultList2","resultList3","resultList4"].forEach(id=>document.getElementById(id).replaceChildren());
   elements.results.hidden = false;
   elements.resultQuery.textContent = `“${query}” 검색 결과`;
   elements.resultCount.textContent = `${items.length}개 결과`;
   if (!items.length) {
-    elements.resultList.append(createElement("p", "empty-result", "일치하는 필지를 찾지 못했어요. 시·군·구와 읍면동, 지번을 함께 입력해 보세요."));
+    document.getElementById("resultList1").append(createElement("p", "empty-result", "일치하는 필지를 찾지 못했어요. 시·군·구와 읍면동, 지번을 함께 입력해 보세요."));
     return;
   }
 
-  items.forEach((item) => {
+  items.forEach((item,index) => {
     const button = createElement("button", "result-item");
     button.type = "button";
     button.dataset.pnu = item.pnu;
@@ -360,9 +360,11 @@ function renderSearchResults(items, query) {
     copy.append(createElement("small", "", [item.roadAddress, item.buildingName].filter(Boolean).join(" · ") || `PNU ${item.pnu}`));
     button.append(copy, createElement("span", "result-arrow", "›"));
     button.addEventListener("click", () => selectParcel(item));
-    elements.resultList.append(button);
+    document.getElementById(index<6?"resultList1":index<12?"resultList2":index<18?"resultList3":"resultList4").append(button);
   });
-  globalThis.TojiIyongAds?.show("searchResults");
+  if(items.length>6)globalThis.TojiIyongAds?.show("searchResults");else globalThis.TojiIyongAds?.hide("searchResults");
+  if(items.length>12)globalThis.TojiIyongAds?.show("searchResults2");else globalThis.TojiIyongAds?.hide("searchResults2");
+  if(items.length>18)globalThis.TojiIyongAds?.show("searchResults3");else globalThis.TojiIyongAds?.hide("searchResults3");
 }
 
 async function searchAddress(query) {

@@ -5,6 +5,8 @@
   const nativeAdsEnabled = /\bAdMobNative\/\d+\b/.test(root.navigator?.userAgent || "");
   const callbacks = Object.freeze({
     searchResults: {failed: "tojiIyongSearchResultsAdFailed", loaded: "tojiIyongSearchResultsAdLoaded"},
+    searchResults2: {failed: "tojiIyongSearchResults2AdFailed", loaded: "tojiIyongSearchResults2AdLoaded"},
+    searchResults3: {failed: "tojiIyongSearchResults3AdFailed", loaded: "tojiIyongSearchResults3AdLoaded"},
     parcelDetail: {failed: "tojiIyongParcelDetailAdFailed", loaded: "tojiIyongParcelDetailAdLoaded"}
   });
 
@@ -148,6 +150,8 @@
 
   function init() {
     register("searchResultsAd", "searchResults");
+    register("searchResultsAd2", "searchResults2");
+    register("searchResultsAd3", "searchResults3");
     register("parcelDetailAd", "parcelDetail");
     root.document.addEventListener("visibilitychange", () => {
       if (root.document.hidden) return;
