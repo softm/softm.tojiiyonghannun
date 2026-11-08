@@ -511,7 +511,7 @@ footer a:hover, footer a:focus-visible { text-decoration: underline; }
   .summary-actions--secondary .secondary-action { width: 100%; }
   .map-dialog { width: calc(100% - 20px); height: calc(100dvh - 20px); max-height: calc(100dvh - 20px); border-radius: 18px; }
   .map-dialog__panel { height: 100%; grid-template-rows: auto auto minmax(0, 1fr) auto; border-radius: 18px; }
-  .map-dialog__head { padding: 15px 16px 13px; }
+  .map-dialog__head { padding: max(15px, env(safe-area-inset-top)) 16px 13px; }
   .map-dialog__head h2 { font-size: 18px; }
   .map-dialog__toolbar { align-items: stretch; flex-direction: column; padding: 9px; }
   .map-search-cluster { width: 100%; }

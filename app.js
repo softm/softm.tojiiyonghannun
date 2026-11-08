@@ -1044,6 +1044,7 @@ function setCurrentLocationButton(loading) {
 }
 
 async function locateCurrentPosition() {
+  elements.mapSearchInput?.blur();
   if (!navigator.geolocation) {
     elements.mapSelectionTitle.textContent = "현재 위치를 사용할 수 없어요";
     elements.mapSelectionHint.textContent = "이 브라우저는 위치정보 기능을 지원하지 않습니다.";
