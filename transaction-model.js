@@ -106,8 +106,8 @@ function integerValue(value) {
 function normalizeJibun(value) {
   const text = String(value || "").trim().replace(/\s+/g, " ");
   const mountain = /^산\s*/.test(text);
-  const match = text.replace(/^산\s*/, "").match(/(\d+)(?:-(\d+))?/);
-  if (!match) return text.replace(/\s+/g, "");
+  const match = text.replace(/^산\s*/, "").match(/^(\d+)(?:-(\d+))?$/);
+  if (!match) return "";
   const main = String(Number(match[1]));
   const sub = Number(match[2] || 0);
   return `${mountain ? "산" : ""}${main}${sub ? `-${sub}` : ""}`;
@@ -203,7 +203,7 @@ function selectedAreaValue(area) {
 }
 
 function sameLegalDong(item, parcelAddress) {
-  return !item.legalDong || !parcelAddress || String(parcelAddress).includes(item.legalDong);
+  return Boolean(item.legalDong && parcelAddress && String(parcelAddress).split(/\s+/).includes(String(item.legalDong).trim()));
 }
 
 export function analyzeTransactions(items, {type, pnu, parcelAddress = "", selectedArea = 0} = {}) {
