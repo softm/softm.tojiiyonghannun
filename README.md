@@ -63,3 +63,14 @@ GitHub Pages 배포에는 저장소 Secret `MOLIT_API_KEY`를 등록해야 합�
 Actions는 Secret으로 `runtime-config.js`를 생성하고 정적 배포물에만 포함합니다. 인증키는 저장소와 Actions 로그에는 기록하지 않지만, 정적 사이트가 브라우저에서 API를 직접 호출하므로 배포된 `runtime-config.js`와 브라우저 네트워크 요청에서는 확인될 수 있습니다. 공개되어도 되는 호출용 키라는 전제로 사용량 제한과 포털 모니터링을 함께 적용해야 합니다.
 
 화면에 표시하는 내용은 참고용이며 공식 확인서를 대체하지 않습니다. 법적 효력이 필요한 경우 관계기관 확인 및 공식 문서 발급 절차를 이용해야 합니다.
+
+## Cloudflare 공통 계정 로그인 · 회원가입
+
+- 서비스 사이트: https://tojiiyonghannun.designboard.net (`softm/softm.tojiiyonghannun`)
+- 공통 계정 Worker: https://softm-hannun-account.softm.workers.dev
+- Worker 소스/허용 Origin: `softm/softm.github.io/services/cloudflare-account/src/index.mjs`의 `tojiiyonghannun` / `https://tojiiyonghannun.designboard.net`
+- 상단 우측 **계정 아이콘**에서 Google·카카오·네이버 상태를 `/health`로 조회합니다. 활성화된 SNS만 선택 가능하며 최초 인증 시 Worker에서 약관 동의 및 신규 가입을 처리합니다. 연결된 계정은 SNS 프로필 사진(없으면 이니셜)으로 표시합니다.
+- 클라이언트는 PKCE(SHA-256)와 요청별 nonce, 정확한 Worker Origin의 `postMessage`, 앱 전용 1시간 세션을 이용합니다. Bearer는 `sessionStorage`에만 저장하며 로그인 시 로컬 조회기록을 자동 업로드하거나 삭제하지 않습니다.
+- 이 기능은 **인증만 연동**합니다. 최근 조회·즐겨찾기의 D1 개인화/기기 동기화는 별도 기능이며 아직 구현되지 않았습니다. 회원탈퇴는 기존 데이터 전수 이전 검증 전까지 Worker에서 잠금 처리됩니다.
+- Cloudflare Worker의 사용자 정의 `SITE_ORIGINS_JSON` 전체 오버라이드가 적용된 운영환경은 해당 JSON에도 위 서비스 ID/Origin을 등록해야 합니다.
+- 실서비스 검증: GitHub Pages 배포 성공 → Worker 배포 성공 → 상단 프로필 열기 → Google 로그인(새 계정은 약관 동의) → 프로필 사진 → 새로고침 유지 → 로그아웃 → 다른 SNS 비활성 상태 확인. SNS 제공자 실제 로그인과 사용자별 데이터 이전은 자동 테스트로 검증되지 않습니다.
