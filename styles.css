@@ -575,3 +575,20 @@ footer a:hover, footer a:focus-visible { text-decoration: underline; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
+
+/* SOFTM-ADFIT-BOTTOM 2026-11-13: 하단 접이식 전용, 지도/입력창 오클릭 방지 */
+.bottom-adfit { position: fixed; z-index: 30; inset: auto 0 0; padding: 5px 12px max(8px, env(safe-area-inset-bottom)); background: rgba(255,254,251,.98); border-top: 1px solid var(--line); box-shadow: 0 -8px 30px rgba(23,52,46,.1); }
+.bottom-adfit__controls { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--ink-soft); font-size: 11px; }
+.bottom-adfit__controls button { cursor: pointer; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--green-dark); font-weight: 700; }
+.bottom-adfit__controls button:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+.bottom-adfit__panel { display: flex; justify-content: center; align-items: center; min-height: 0; margin: 6px auto 0; }
+.bottom-adfit__host { flex: 0 0 auto; margin: 0 auto; }
+.bottom-adfit__host[data-state="unavailable"] { display: none !important; }
+.bottom-adfit__host > ins { display: block; }
+body:has(.bottom-adfit:not([hidden])) { padding-bottom: 132px; }
+body:has(.bottom-adfit:not([hidden]) .bottom-adfit__panel[hidden]) { padding-bottom: 48px; }
+@media (max-width: 767px) {
+  body:has(.bottom-adfit:not([hidden])) { padding-bottom: 92px; }
+  body:has(.bottom-adfit:not([hidden]) .bottom-adfit__panel[hidden]) { padding-bottom: 48px; }
+}
+@media (prefers-reduced-motion: reduce) { .bottom-adfit * { scroll-behavior: auto; } }
