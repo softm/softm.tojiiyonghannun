@@ -40,7 +40,7 @@
       }
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
-    <link rel="stylesheet" href="./styles.css?v=20261113-2" />
+    <link rel="stylesheet" href="./styles.css?v=20261113-3" />
     <link rel="stylesheet" href="./account-ui.css?v=20261113-1" />
   </head>
   <body>
@@ -340,6 +340,13 @@
       </section>
     </main>
 
+    <aside class="bottom-adfit" id="bottomAdFit" aria-label="하단 광고" hidden>
+      <div class="bottom-adfit__controls"><span>광고</span><button type="button" id="bottomAdFitToggle" aria-expanded="false" aria-controls="bottomAdFitPanel">광고 펼치기</button></div>
+      <div class="bottom-adfit__panel" id="bottomAdFitPanel" hidden>
+        <div class="bottom-adfit__host" id="bottomAdFitDesktop" data-adfit-host></div>
+        <div class="bottom-adfit__host" id="bottomAdFitMobile" data-adfit-host></div>
+      </div>
+    </aside>
     <footer>
       <strong>토지이용한눈</strong>
       <p>정부기관 공식 앱이 아닌 독립적인 민간 정보 서비스입니다.</p>
@@ -429,8 +436,8 @@
     </dialog>
 
     <script src="./runtime-config.js"></script>
-    <script src="./adfit-config.js?v=20261113-2"></script>
-    <script src="./adfit.js?v=20261113-2"></script>
+    <script src="./adfit-config.js?v=20261113-3"></script>
+    <script src="./adfit.js?v=20261113-3"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.0/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
