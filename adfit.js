@@ -65,6 +65,10 @@
     state.host.replaceChildren();
     state.ad = null;
     hideZone(state, "unavailable");
+    if (state.placement.startsWith("bottom") && bottomSelection === state.placement && bottomShell) {
+      bottomPanel.hidden = true;
+      bottomShell.hidden = true;
+    }
   }
 
   function loaded(state) {
