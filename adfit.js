@@ -14,7 +14,9 @@
   const nativeAdsEnabled = /\bAdMobNative\/\d+\b/.test(root.navigator?.userAgent || "");
   const callbacks = Object.freeze({
     searchResults: {failed: "tojiIyongSearchResultsAdFailed", loaded: "tojiIyongSearchResultsAdLoaded"},
-    parcelDetail: {failed: "tojiIyongParcelDetailAdFailed", loaded: "tojiIyongParcelDetailAdLoaded"}
+    parcelDetail: {failed: "tojiIyongParcelDetailAdFailed", loaded: "tojiIyongParcelDetailAdLoaded"},
+    bottomMobile: {failed: "tojiIyongBottomMobileAdFailed", loaded: "tojiIyongBottomMobileAdLoaded"},
+    bottomDesktop: {failed: "tojiIyongBottomDesktopAdFailed", loaded: "tojiIyongBottomDesktopAdLoaded"}
   });
   let sdkPromise;
 
@@ -28,7 +30,8 @@
 
   function validSlot(slot) {
     return /^DAN-[A-Za-z0-9]+$/.test(String(slot?.unit || "").trim()) &&
-      Number(slot.width) === 320 && Number(slot.height) === 100;
+      ((Number(slot.width) === 320 && [50, 100].includes(Number(slot.height))) ||
+       (Number(slot.width) === 728 && Number(slot.height) === 90));
   }
 
   function viewportReady() {
@@ -168,7 +171,7 @@
 
   function register(id, placement) {
     const zone = root.document.getElementById(id);
-    const host = zone?.querySelector("[data-adfit-host]");
+    const host = zone?.matches?.("[data-adfit-host]") ? zone : zone?.querySelector("[data-adfit-host]");
     if (!zone || !host || states.has(placement)) return;
     const slot = config().placements?.[placement];
     const enabled = hostAllowed() && validSlot(slot) && !usedUnits.has(slot.unit);
@@ -208,23 +211,86 @@
     };
   }
 
+  const BOTTOM_STORAGE_KEY = "tojiiyonghannun.adfit.bottom.collapsed.v1";
+  let bottomCollapsed = false;
+  let bottomShell;
+  let bottomPanel;
+  let bottomToggle;
+  let bottomSelection = null;
+
+  function bottomAvailable() {
+    return hostAllowed() && ["bottomMobile", "bottomDesktop"].some(key => states.get(key)?.enabled);
+  }
+
+  function bottomChoice() {
+    const width = root.document.documentElement?.clientWidth || root.innerWidth || 0;
+    if (width >= 728 && states.get("bottomDesktop")?.enabled) return "bottomDesktop";
+    if (width >= 320 && states.get("bottomMobile")?.enabled) return "bottomMobile";
+    return null;
+  }
+
+  function syncBottom() {
+    if (!bottomShell || !bottomAvailable()) return;
+    const choice = bottomChoice();
+    const showBanner = !bottomCollapsed && Boolean(choice) && viewportReady();
+    bottomShell.hidden = !choice;
+    bottomPanel.hidden = !showBanner;
+    bottomToggle.textContent = bottomCollapsed ? "광고 펼치기" : "광고 접기";
+    bottomToggle.setAttribute("aria-expanded", String(!bottomCollapsed));
+    if (bottomSelection !== choice) {
+      for (const key of ["bottomMobile", "bottomDesktop"]) hide(key);
+      bottomSelection = choice;
+    }
+    if (showBanner) {
+      show(choice);
+      const state = states.get(choice);
+      if (state?.failed) {
+        bottomPanel.hidden = true;
+        bottomShell.hidden = true;
+      }
+    } else if (choice) {
+      hide(choice);
+    }
+  }
+
+  function initBottom() {
+    bottomShell = root.document.getElementById("bottomAdFit");
+    bottomPanel = root.document.getElementById("bottomAdFitPanel");
+    bottomToggle = root.document.getElementById("bottomAdFitToggle");
+    if (!bottomShell || !bottomPanel || !bottomToggle) return;
+    register("bottomAdFitMobile", "bottomMobile");
+    register("bottomAdFitDesktop", "bottomDesktop");
+    try { bottomCollapsed = root.localStorage?.getItem(BOTTOM_STORAGE_KEY) === "1"; } catch {}
+    bottomToggle.addEventListener("click", () => {
+      bottomCollapsed = !bottomCollapsed;
+      try { root.localStorage?.setItem(BOTTOM_STORAGE_KEY, bottomCollapsed ? "1" : "0"); } catch {}
+      syncBottom();
+    });
+    syncBottom();
+  }
+
   let initialized = false;
   function init() {
     if (initialized) return;
     initialized = true;
     register("searchResultsAd", "searchResults");
     register("parcelDetailAd", "parcelDetail");
+    initBottom();
     root.document.addEventListener("visibilitychange", () => {
       for (const state of states.values()) sync(state);
+      syncBottom();
     });
     root.addEventListener("online", () => {
       for (const state of states.values()) sync(state);
+      syncBottom();
     });
     root.addEventListener("offline", () => {
       for (const state of states.values()) sync(state);
+      syncBottom();
     });
     root.addEventListener("resize", () => {
       for (const state of states.values()) sync(state);
+      syncBottom();
     }, {passive: true});
   }
 
