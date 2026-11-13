@@ -1,164 +1,231 @@
+/** SOFTM-ADFIT 공통 웹 광고 수명주기 / 토지이용한눈 2026-11-13.
+ * 검색 결과 및 필지 상세별로 발급된 AdFit 단위만 사용한다.
+ * 동일 단위 재요청, SDK 중복 주입, Android 네이티브 광고와의 중복을 방지한다.
+ */
 (function setupAdFit(root) {
   "use strict";
 
+  const SDK_URL = "https://t1.kakaocdn.net/kas/static/ba.min.js";
+  const SDK_ID = "tojiiyonghannun-adfit-sdk";
+  const REQUEST_TIMEOUT = 30000;
+  const SDK_TIMEOUT = 15000;
   const states = new Map();
+  const usedUnits = new Set();
   const nativeAdsEnabled = /\bAdMobNative\/\d+\b/.test(root.navigator?.userAgent || "");
   const callbacks = Object.freeze({
     searchResults: {failed: "tojiIyongSearchResultsAdFailed", loaded: "tojiIyongSearchResultsAdLoaded"},
-    searchResults2: {failed: "tojiIyongSearchResults2AdFailed", loaded: "tojiIyongSearchResults2AdLoaded"},
-    searchResults3: {failed: "tojiIyongSearchResults3AdFailed", loaded: "tojiIyongSearchResults3AdLoaded"},
     parcelDetail: {failed: "tojiIyongParcelDetailAdFailed", loaded: "tojiIyongParcelDetailAdLoaded"}
   });
+  let sdkPromise;
 
   function config() {
     return root.TOJI_IYONG_AD_CONFIG || {};
   }
 
-  function isProductionHost() {
-    return root.location?.hostname === config().domain;
+  function hostAllowed() {
+    return config().enabled === true && root.location?.hostname === config().domain && !nativeAdsEnabled;
   }
 
-  function isValidSlot(slot) {
-    return /^DAN-[A-Za-z0-9]+$/.test(String(slot?.unit || "").trim())
-      && Number(slot?.width) === 320
-      && Number(slot?.height) === 100;
+  function validSlot(slot) {
+    return /^DAN-[A-Za-z0-9]+$/.test(String(slot?.unit || "").trim()) &&
+      Number(slot.width) === 320 && Number(slot.height) === 100;
   }
 
-  function clearRequestTimer(state) {
-    root.clearTimeout(state.timeout);
-    state.timeout = 0;
+  function viewportReady() {
+    return !root.document.hidden && root.navigator?.onLine !== false;
   }
 
-  function conceal(state, {failed = false} = {}) {
-    clearRequestTimer(state);
-    if (failed) {
-      state.failed = true;
-      state.host.replaceChildren();
-      state.ad = null;
-    }
+  function hasRoom(state) {
+    return (state.zone.parentElement?.clientWidth || 0) >= state.slot.width &&
+      (root.document.documentElement?.clientWidth || root.innerWidth || 0) >= state.slot.width;
+  }
+
+  function disconnect(state) {
+    state.observer?.disconnect();
+    state.observer = null;
+  }
+
+  function hideZone(state, reason = "hidden") {
     state.zone.hidden = true;
-    state.zone.dataset.state = failed ? "unavailable" : "hidden";
+    state.zone.dataset.state = reason;
   }
 
-  function reveal(state) {
-    if (state.failed || !state.enabled) return;
-    state.zone.hidden = false;
-    state.zone.dataset.state = state.loaded ? "loaded" : "ready";
+  function fail(state) {
+    if (state.failed) return;
+    state.failed = true;
+    root.clearTimeout(state.timer);
+    state.timer = 0;
+    disconnect(state);
+    try {
+      if (state.ad && typeof root.adfit?.destroy === "function") root.adfit.destroy(state.ad);
+    } catch {}
+    state.host.replaceChildren();
+    state.ad = null;
+    hideZone(state, "unavailable");
+  }
+
+  function loaded(state) {
+    if (state.failed || !state.ad) return;
+    root.clearTimeout(state.timer);
+    state.timer = 0;
+    state.loaded = true;
+    if (state.wants && viewportReady() && hasRoom(state)) {
+      state.zone.hidden = false;
+      state.zone.dataset.state = "loaded";
+    } else {
+      hideZone(state);
+    }
+  }
+
+  function sdk() {
+    if (typeof root.adfit?.render === "function") return Promise.resolve(root.adfit);
+    if (sdkPromise) return sdkPromise;
+    sdkPromise = new Promise((resolve, reject) => {
+      let finished = false;
+      const script = root.document.getElementById(SDK_ID) || root.document.createElement("script");
+      const timer = root.setTimeout(() => done(Error("AdFit SDK timeout")), SDK_TIMEOUT);
+      function done(error) {
+        if (finished) return;
+        finished = true;
+        root.clearTimeout(timer);
+        if (error || typeof root.adfit?.render !== "function") {
+          reject(error || Error("AdFit render API unavailable"));
+        } else {
+          resolve(root.adfit);
+        }
+      }
+      script.addEventListener("load", () => done(), {once: true});
+      script.addEventListener("error", () => done(Error("AdFit SDK unavailable")), {once: true});
+      if (!script.isConnected) {
+        script.id = SDK_ID;
+        script.async = true;
+        script.charset = "utf-8";
+        script.src = SDK_URL;
+        root.document.head.append(script);
+      }
+    });
+    return sdkPromise;
   }
 
   function requestAd(state) {
-    if (state.requested || state.failed || !state.enabled || root.document.hidden) return;
-    const settings = config();
-    const slot = settings.placements?.[state.placement];
-    if (state.host.clientWidth < Number(slot.width)) {
-      conceal(state, {failed: true});
-      return;
-    }
-
-    state.requested = true;
+    if (!state.wants || state.requested || state.failed || !viewportReady() || !hasRoom(state)) return;
+    state.requested = true; // 같은 지면에서는 한 번만 요청한다.
     state.zone.dataset.state = "loading";
-    const ad = root.document.createElement("ins");
-    ad.className = "kakao_ad_area";
-    ad.style.display = "none";
-    ad.dataset.adUnit = slot.unit;
-    ad.dataset.adWidth = String(slot.width);
-    ad.dataset.adHeight = String(slot.height);
-    ad.dataset.adOnfail = callbacks[state.placement].failed;
-    ad.dataset.adOnload = callbacks[state.placement].loaded;
-    state.ad = ad;
-    state.host.append(ad);
-
-    const script = root.document.createElement("script");
-    script.async = true;
-    script.charset = "utf-8";
-    script.src = settings.script;
-    script.onerror = () => conceal(state, {failed: true});
-    script.onload = () => {
-      script.remove();
-      state.timeout = root.setTimeout(() => {
-        if (!state.host.querySelector("iframe")) conceal(state, {failed: true});
-      }, 30000);
-    };
-    root.document.head.append(script);
+    void sdk().then(api => {
+      if (state.failed) return;
+      if (!state.wants || !viewportReady() || !hasRoom(state)) {
+        state.requested = false; // 서버에 광고를 요청하기 전에는 보류할 수 있다.
+        return;
+      }
+      const ins = root.document.createElement("ins");
+      ins.className = "kakao_ad_area";
+      ins.style.display = "none";
+      ins.dataset.adUnit = state.slot.unit;
+      ins.dataset.adWidth = String(state.slot.width);
+      ins.dataset.adHeight = String(state.slot.height);
+      ins.dataset.adOnfail = callbacks[state.placement].failed;
+      ins.dataset.adOnload = callbacks[state.placement].loaded;
+      state.ad = ins;
+      state.host.append(ins); // SDK를 불러온 다음 삽입해 자동스캔과 render 중복을 방지
+      state.timer = root.setTimeout(() => {
+        if (state.host.querySelector("iframe")) loaded(state);
+        else fail(state);
+      }, REQUEST_TIMEOUT);
+      try {
+        api.render(ins);
+      } catch {
+        fail(state);
+      }
+    }).catch(() => fail(state));
   }
 
   function observe(state) {
-    if (state.observer || state.requested || state.failed || !state.enabled) return;
-    if (!root.IntersectionObserver) {
+    if (state.observer || state.requested || state.loaded || state.failed || !state.wants || !viewportReady()) return;
+    if (typeof root.IntersectionObserver !== "function") {
       requestAd(state);
       return;
     }
-    state.observer = new root.IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      state.observer.disconnect();
-      state.observer = null;
+    state.observer = new root.IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      disconnect(state);
       requestAd(state);
     }, {rootMargin: "200px 0px"});
     state.observer.observe(state.zone);
+  }
+
+  function sync(state) {
+    if (!state || state.failed || !state.enabled || !state.wants || !viewportReady() || !hasRoom(state)) {
+      if (state) {
+        disconnect(state);
+        hideZone(state);
+      }
+      return;
+    }
+    state.zone.hidden = false;
+    state.zone.dataset.state = state.loaded ? "loaded" : state.requested ? "loading" : "ready";
+    if (!state.loaded) observe(state);
   }
 
   function register(id, placement) {
     const zone = root.document.getElementById(id);
     const host = zone?.querySelector("[data-adfit-host]");
     if (!zone || !host || states.has(placement)) return;
-    const settings = config();
-    const enabled = Boolean(settings.enabled)
-      && isProductionHost()
-      && !nativeAdsEnabled
-      && isValidSlot(settings.placements?.[placement]);
+    const slot = config().placements?.[placement];
+    const enabled = hostAllowed() && validSlot(slot) && !usedUnits.has(slot.unit);
     const state = {
-      zone,
-      host,
-      placement,
-      enabled,
-      requested: false,
-      loaded: false,
-      failed: false,
-      ad: null,
-      timeout: 0,
-      observer: null
+      placement, zone, host, slot, enabled,
+      wants: false, requested: false, loaded: false, failed: false, ad: null,
+      observer: null, timer: 0
     };
     states.set(placement, state);
-    conceal(state);
+    if (enabled) usedUnits.add(slot.unit);
+    hideZone(state);
   }
 
   function show(placement) {
     const state = states.get(placement);
-    if (!state || !state.enabled || state.failed) return;
-    reveal(state);
-    if (!state.loaded) observe(state);
+    if (!state) return;
+    state.wants = true;
+    sync(state);
   }
 
   function hide(placement) {
     const state = states.get(placement);
-    if (state) conceal(state);
+    if (!state) return;
+    state.wants = false;
+    disconnect(state);
+    hideZone(state);
   }
 
-  for (const [placement, names] of Object.entries(callbacks)) {
-    root[names.failed] = (ad) => {
+  for (const [placement, name] of Object.entries(callbacks)) {
+    root[name.failed] = ins => {
       const state = states.get(placement);
-      if (state?.ad === ad) conceal(state, {failed: true});
+      if (state?.ad === ins) fail(state);
     };
-    root[names.loaded] = (ad) => {
+    root[name.loaded] = ins => {
       const state = states.get(placement);
-      if (state?.ad !== ad || state.failed) return;
-      clearRequestTimer(state);
-      state.loaded = true;
-      state.zone.dataset.state = "loaded";
+      if (state?.ad === ins) loaded(state);
     };
   }
 
+  let initialized = false;
   function init() {
+    if (initialized) return;
+    initialized = true;
     register("searchResultsAd", "searchResults");
-    register("searchResultsAd2", "searchResults2");
-    register("searchResultsAd3", "searchResults3");
     register("parcelDetailAd", "parcelDetail");
     root.document.addEventListener("visibilitychange", () => {
-      if (root.document.hidden) return;
-      for (const state of states.values()) {
-        if (!state.zone.hidden && !state.loaded) observe(state);
-      }
+      for (const state of states.values()) sync(state);
     });
+    root.addEventListener("online", () => {
+      for (const state of states.values()) sync(state);
+    });
+    root.addEventListener("offline", () => {
+      for (const state of states.values()) sync(state);
+    });
+    root.addEventListener("resize", () => {
+      for (const state of states.values()) sync(state);
+    }, {passive: true});
   }
 
   root.TojiIyongAds = Object.freeze({init, show, hide});
