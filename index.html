@@ -41,6 +41,7 @@
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css" />
     <link rel="stylesheet" href="./styles.css?v=20261017-1" />
+    <link rel="stylesheet" href="./account-ui.css?v=20261113-1" />
   </head>
   <body>
     <a class="skip-link" href="#main">본문으로 바로가기</a>
@@ -54,7 +55,12 @@
         </span>
         <span class="brand-copy"><strong>토지이용한눈</strong><small>Land Use at a Glance</small></span>
       </a>
-      <span class="official-note" title="정부·지자체·공공기관의 공식 앱이 아닙니다.">민간 정보 서비스</span>
+      <div class="header-actions">
+        <span class="official-note" title="정부·지자체·공공기관의 공식 앱이 아닙니다.">민간 정보 서비스</span>
+        <button class="account-trigger" id="accountEntry" type="button" aria-label="로그인 및 회원가입" title="로그인 및 회원가입">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M4.5 21v-2a7.5 7.5 0 0 1 15 0v2" /></svg>
+        </button>
+      </div>
     </header>
 
     <main id="main">
@@ -430,5 +436,6 @@
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
     <script type="module" src="./report-export.js?v=20261013-10"></script>
     <script type="module" src="./app.js?v=20261017-1"></script>
+    <script type="module" src="./account-ui.js?v=20261113-1"></script>
   </body>
 </html>
