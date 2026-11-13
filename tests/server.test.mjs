@@ -56,8 +56,8 @@ test("검색 결과와 필지 상세에 AdFit 지면과 운영 설정을 제공�
     const html = await (await fetch(`${baseUrl}/`)).text();
     assert.match(html, /id="searchResultsAd"/);
     assert.match(html, /id="parcelDetailAd"/);
-    assert.match(html, /adfit-config\.js\?v=20261013-1/);
-    assert.match(html, /adfit\.js\?v=20261013-1/);
+    assert.match(html, /adfit-config\.js\?v=\d{8}-\d+/);
+    assert.match(html, /adfit\.js\?v=\d{8}-\d+/);
 
     const configResponse = await fetch(`${baseUrl}/adfit-config.js`);
     const runtimeResponse = await fetch(`${baseUrl}/adfit.js`);

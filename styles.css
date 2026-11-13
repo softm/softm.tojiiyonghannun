@@ -107,10 +107,12 @@ h1 em { color: var(--green); font-style: normal; }
 .result-copy small { overflow: hidden; color: var(--ink-soft); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .result-arrow { color: var(--green); font-size: 22px; }
 .empty-result { padding: 28px 15px; color: var(--ink-soft); text-align: center; }
-.adfit-zone { position: relative; left: 50%; width: 320px; max-width: calc(100% + 32px); margin: 18px 0 0; padding-top: 13px; overflow: hidden; border-top: 1px solid var(--line); text-align: center; transform: translateX(-50%); }
+.adfit-zone { position: relative; width: min(320px, 100%); max-width: 100%; margin: 18px auto 0; padding-top: 13px; overflow: visible; border-top: 1px solid var(--line); text-align: center; }
+.adfit-zone[hidden] { display: none !important; }
 .adfit-zone--detail { margin-top: 0; padding: 18px 0; border-top: 0; border-bottom: 1px solid var(--line); }
 .adfit-label { display: block; margin-bottom: 5px; color: #819189; font-size: 8px; font-weight: 700; letter-spacing: .08em; }
-.adfit-host { width: 100%; max-width: 320px; min-height: 100px; margin: 0 auto; overflow: hidden; }
+.adfit-host { width: 320px; max-width: 100%; min-height: 100px; margin: 0 auto; }
+.adfit-host > ins { display: block; }
 .adfit-host > ins, .adfit-host iframe { max-width: 100%; }
 
 .lookup-progress { margin-top: 28px; padding: 27px; overflow: hidden; border: 1px solid #cfe0d7; border-radius: 22px; background: rgba(255, 254, 251, .96); box-shadow: 0 20px 60px rgba(24, 59, 49, .11); text-align: left; }

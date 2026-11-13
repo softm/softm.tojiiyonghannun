@@ -363,8 +363,6 @@ function renderSearchResults(items, query) {
     document.getElementById(index<6?"resultList1":index<12?"resultList2":index<18?"resultList3":"resultList4").append(button);
   });
   if(items.length>6)globalThis.TojiIyongAds?.show("searchResults");else globalThis.TojiIyongAds?.hide("searchResults");
-  if(items.length>12)globalThis.TojiIyongAds?.show("searchResults2");else globalThis.TojiIyongAds?.hide("searchResults2");
-  if(items.length>18)globalThis.TojiIyongAds?.show("searchResults3");else globalThis.TojiIyongAds?.hide("searchResults3");
 }
 
 async function searchAddress(query) {
