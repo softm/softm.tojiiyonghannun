@@ -85,6 +85,10 @@ test("정확 일치 거래와 유사 거래를 섞지 않고 취소 거래를 �
     selectedArea: 100
   });
   assert.equal(result.scope, "exact");
+  assert.equal(result.exactItems.length, 1);
+  assert.equal(result.nearbyItems.length, 1);
+  assert.equal(result.exactItems[0].jibun, exact.jibun);
+  assert.equal(result.nearbyItems[0].jibun, nearby.jibun);
   assert.equal(result.totalCount, 1);
   assert.equal(result.items[0].normalizedJibun, "168-8");
   assert.equal(result.cancelledCount, 1);
