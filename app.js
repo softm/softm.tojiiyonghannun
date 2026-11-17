@@ -670,7 +670,7 @@ function renderTransactionList(items, definition, scope = "nearby") {
     elements.transactionList.append(createElement("p", "transaction-empty", "표시할 거래가 없습니다."));
     return;
   }
-  items.slice(0, 12).forEach((item) => {
+  items.slice(0, 20).forEach((item) => {
     const article = createElement("article", "transaction-item");
     const head = createElement("div", "transaction-item__head");
     head.append(createElement("strong", "", formatDealAmount(item.amount)), createElement("time", "", formatContractDate(item.contractDate)));
