@@ -664,7 +664,7 @@ function renderTransactionTrend(trend) {
   elements.transactionTrendChart.append(chart);
 }
 
-function renderTransactionList(items, definition) {
+function renderTransactionList(items, definition, scope = "nearby") {
   elements.transactionList.replaceChildren();
   if (!items.length) {
     elements.transactionList.append(createElement("p", "transaction-empty", "표시할 거래가 없습니다."));
@@ -675,7 +675,7 @@ function renderTransactionList(items, definition) {
     const head = createElement("div", "transaction-item__head");
     head.append(createElement("strong", "", formatDealAmount(item.amount)), createElement("time", "", formatContractDate(item.contractDate)));
     const title = [item.area ? `${definition.areaKind} ${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(item.area)}㎡` : "", item.floor ? `${item.floor}층` : ""].filter(Boolean).join(" · ") || item.buildingName || TRANSACTION_TYPES[item.type].label;
-    const meta = [item.buildingName || [item.legalDong, item.jibun].filter(Boolean).join(" "), formatUnitPrice(item.unitPrice)].filter(Boolean);
+    const meta = [scope === "exact" ? "" : item.buildingName || [item.legalDong, item.jibun].filter(Boolean).join(" "), formatUnitPrice(item.unitPrice)].filter(Boolean);
     article.append(head, createElement("b", "transaction-item__title", title), createElement("p", "", meta.join(" · ")));
     elements.transactionList.append(article);
   });
@@ -735,8 +735,8 @@ function renderTransactionResult(result) {
   appendTransactionStat("㎡당 중앙값", formatUnitPrice(result.medianUnitPrice), result.minUnitPrice ? `${formatUnitPrice(result.minUnitPrice)} ~ ${formatUnitPrice(result.maxUnitPrice)}` : "면적 정보 없음");
   renderTransactionInsights(result);
   renderTransactionTrend(result.trend);
-  renderTransactionList(result.items, result.definition);
-  if (!result.totalCount) {
+  renderTransactionList(result.items, result.definition, result.scope);
+  if (!result.totalCount && !result.failedMonths) {
     elements.transactionMessage.textContent = exact
       ? "최근 24개월 동안 공개된 해당 필지·단지 거래가 없습니다."
       : "최근 24개월 동안 비교 가능한 공개 거래가 없습니다.";
