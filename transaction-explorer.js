@@ -76,7 +76,7 @@ function drawTrend(root,items) {
   }
   root.append(chart,el("p","txi-note","거래가 있는 월만 표시 · 월별 ㎡당 중간가격 · 빈 달은 0원이 아닙니다."));
 }
-function drawList(root,items,areaKind) {
+function drawList(root,items,areaKind,scope) {
   root.replaceChildren();
   if(!items.length){root.append(el("p","txi-empty","해당 면적대에 공개 거래가 없습니다."));return;}
   const sorted=[...items].sort((a,b)=>String(b.contractDate).localeCompare(String(a.contractDate)));
@@ -88,7 +88,7 @@ function drawList(root,items,areaKind) {
     const main=[row.area>0?`${areaKind} ${nf.format(row.area)}㎡`:"면적 미제공",row.floor?`${row.floor}층`:""].filter(Boolean).join(" · ");
     const subtitle=row.buildingName||[row.legalDong,row.jibun].filter(Boolean).join(" ");
     article.append(head,el("div","txi-trade-size",main),
-      el("p","txi-trade-meta",[`㎡당 ${row.unitPrice?integer.format(row.unitPrice)+"원":"계산 불가"}`,subtitle].filter(Boolean).join(" · ")));
+      el("p","txi-trade-meta",[`㎡당 ${row.unitPrice?integer.format(row.unitPrice)+"원":"계산 불가"}`,scope==="exact"?"":subtitle].filter(Boolean).join(" · ")));
     root.append(article);
   }
 }
@@ -151,9 +151,13 @@ export function showTransactionExplorer(result, landUse = {}) {
     appendStat(metrics,"㎡당 중간가격",rate?`${integer.format(rate)}원`:"—");
     conclusion.textContent=insights(selection,result);
     drawTrend(chart,selection);
-    drawList(list,selection,result.definition?.areaKind||"면적");
+    drawList(list,selection,result.definition?.areaKind||"면적",result.scope);
   }
   entries.forEach((x,i)=>x.button.addEventListener("click",()=>select(i)));
-  select(0);
+  // 동일 단지에 여러 면적대가 있으면 표본이 가장 많은 그룹을 첫 비교 기준으로 선택.
+  const defaultIndex=entries.length>1
+    ? entries.map((entry,index)=>({index,count:entry.items.length})).slice(1).sort((a,b)=>b.count-a.count)[0].index
+    : 0;
+  select(defaultIndex);
   parent.classList.add("txi-enhanced");
 }
