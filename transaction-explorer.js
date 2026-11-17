@@ -92,7 +92,7 @@ function drawList(root,items,areaKind) {
     root.append(article);
   }
 }
-export function showTransactionExplorer(result) {
+export function showTransactionExplorer(result, landUse = {}) {
   const parent=document.querySelector("#transactionResults");
   if(!parent)return;
   const existing=document.querySelector("#transactionExplorer");
@@ -105,6 +105,13 @@ export function showTransactionExplorer(result) {
   const header=el("div","txi-heading");
   header.append(el("div","txi-heading-copy","거래 가격 분석"),el("span","txi-scope",result.scope==="exact"?"해당 필지·단지 공개 거래":"법정동 비교 거래"));
   section.append(header);
+  const planning=(landUse.nationalPlan || []).map(zone=>String(zone.name||"").trim()).filter(Boolean);
+  if (planning.length) {
+    const zoning=el("div","txi-zoning");
+    zoning.append(el("strong","","이 필지의 토지이용계획"),el("span","",planning.slice(0,4).join(" · ")));
+    zoning.append(el("small","","위 지정정보는 선택 필지 기준입니다. 아래 주변 거래에도 동일 규제가 적용된다는 뜻은 아닙니다."));
+    section.append(zoning);
+  }
   const filters=el("div","txi-filters");
   filters.setAttribute("aria-label","거래 면적 선택");
   const allButton=el("button","txi-filter active","전체");allButton.type="button";allButton.setAttribute("aria-pressed","true");filters.append(allButton);
