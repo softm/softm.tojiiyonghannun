@@ -365,7 +365,7 @@ function renderSearchResults(items, query) {
   if(items.length>6)globalThis.TojiIyongAds?.show("searchResults");else globalThis.TojiIyongAds?.hide("searchResults");
 }
 
-async function searchAddress(query) {
+async function searchAddress(query, {autoSelectAddress = ""} = {}) {
   searchController?.abort();
   searchController = new AbortController();
   closeHistoryAutocomplete();
@@ -379,6 +379,11 @@ async function searchAddress(query) {
   elements.summary.hidden = true;
   try {
     const payload = await requestAddressSearch(query, searchController.signal);
+    if(autoSelectAddress){
+      const target=autoSelectAddress.replace(/\s+/g," ").trim();
+      const match=(payload.items||[]).find(item=>[item.parcelAddress,item.primaryAddress].some(address=>String(address||"").replace(/\s+/g," ").trim()===target));
+      if(match){await selectParcel(match);return;}
+    }
     renderSearchResults(payload.items || [], query);
     setStatus(payload.partial ? "일부 주소 검색 결과만 표시했습니다." : "");
   } catch (error) {
@@ -703,9 +708,11 @@ function renderTransactionResult(result) {
   renderTransactionTrend(result.trend);
   renderTransactionList(result.items, result.definition);
   // 독립적으로 로드되는 개선 UI가 실패해도 기존 실거래 화면과 주소 검색은 유지한다.
-  import("./transaction-explorer.js?v=20261117-5")
+  import("./transaction-explorer.js?v=20261117-6")
     .then(({showTransactionExplorer}) => {
-      if (selectedTransactionResult === result && !elements.transactionResults.hidden) showTransactionExplorer(result, selectedData);
+      if (selectedTransactionResult === result && !elements.transactionResults.hidden) showTransactionExplorer(result, selectedData, {
+        onOpenParcel(query){elements.input.value=query;void searchAddress(query,{autoSelectAddress:query});}
+      });
     }).catch(error => console.warn("실거래 분석 UI 로딩 실패, 기본 표시 유지", error));
   if (!result.totalCount && !result.failedMonths) {
     elements.transactionMessage.textContent = exact

@@ -22,6 +22,14 @@ function money(v) {
   const e=Math.floor(n/10000), rem=Math.round(n%10000);
   return e ? `${e}억${rem ? " "+integer.format(rem)+"만원":""}` : `${integer.format(n)}만원`;
 }
+export function buildTransactionParcelQuery(parcelAddress,row) {
+  if(!row?.legalDong||!row?.normalizedJibun)return "";
+  const tokens=String(parcelAddress||"").trim().split(/\s+/).filter(Boolean);
+  let dongIndex=-1;
+  for(let index=tokens.length-1;index>=0;index-=1){if(/(?:동|읍|면|리|가)$/.test(tokens[index])){dongIndex=index;break;}}
+  const prefix=dongIndex>=0?tokens.slice(0,dongIndex):tokens.slice(0,Math.max(0,tokens.length-2));
+  return [...prefix,row.legalDong,row.jibun].filter(Boolean).join(" ");
+}
 function median(values) {
   const data=values.filter(n=>Number.isFinite(n)&&n>0).sort((a,b)=>a-b);
   if (!data.length) return null;
@@ -124,12 +132,14 @@ async function drawTrend(root,items) {
     console.warn("ECharts 로딩 실패",error);
   }
 }
-function drawList(root,items,areaKind,scope) {
+function drawList(root,items,areaKind,scope,parcelAddress,onOpenParcel) {
   root.replaceChildren();
   if(!items.length){root.append(el("p","txi-empty","해당 면적대에 공개 거래가 없습니다."));return;}
   const sorted=[...items].sort((a,b)=>String(b.contractDate).localeCompare(String(a.contractDate)));
   for(const row of sorted.slice(0,20)){
-    const article=el("article","txi-trade");
+    const query=scope==="nearby"?buildTransactionParcelQuery(parcelAddress,row):"";
+    const article=el(query?"button":"article",`txi-trade${query?" txi-trade-link":""}`);
+    if(query){article.type="button";article.setAttribute("aria-label",`${row.legalDong} ${row.jibun} 필지 조회`);article.addEventListener("click",()=>onOpenParcel?.(query));}
     const price=el("strong","",money(row.amount));
     const head=el("div","txi-trade-head");
     head.append(price,el("time","",String(row.contractDate||"").replace(/-/g,".")));
@@ -137,10 +147,11 @@ function drawList(root,items,areaKind,scope) {
     const subtitle=row.buildingName||[row.legalDong,row.jibun].filter(Boolean).join(" ");
     article.append(head,el("div","txi-trade-size",main),
       el("p","txi-trade-meta",[`㎡당 ${row.unitPrice?integer.format(row.unitPrice)+"원":"계산 불가"}`,scope==="exact"?"":subtitle].filter(Boolean).join(" · ")));
+    if(query)article.append(el("span","txi-trade-open","이 필지 조회 ›"));
     root.append(article);
   }
 }
-export function showTransactionExplorer(result, landUse = {}) {
+export function showTransactionExplorer(result, landUse = {}, {onOpenParcel} = {}) {
   const parent=document.querySelector("#transactionResults");
   if(!parent)return;
   const existing=document.querySelector("#transactionExplorer");
@@ -197,7 +208,7 @@ export function showTransactionExplorer(result, landUse = {}) {
     appendStat(metrics,"㎡당 중간가격",rate?`${integer.format(rate)}원`:"—");
     conclusion.textContent=insights(selection,{...result,scope:activeScope});
     void drawTrend(chart,selection);
-    drawList(list,selection,result.definition?.areaKind||"면적",activeScope);
+    drawList(list,selection,result.definition?.areaKind||"면적",activeScope,landUse.address,onOpenParcel);
     note.textContent=activeScope==="exact"
       ?"공개 지번이 일치하는 거래입니다. 동일 단지 내에서도 동·층·향·상태에 따라 가격이 달라질 수 있습니다."
       :"선택 필지 거래를 제외한 같은 법정동의 비교 거래입니다. 선택 필지의 시세로 단정할 수 없습니다.";

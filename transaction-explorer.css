@@ -25,8 +25,12 @@
 .txi-legend-price::before{border-top:3px solid #176b4a;border-radius:9px}
 .txi-legend-volume::before{height:9px;background:#a8cdb9;border-radius:2px}
 .txi-note,.txi-caution{font-size:11px;line-height:1.6;color:#6b7b73;margin:9px 0}
-.txi-trades{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.txi-trades{display:grid;grid-template-columns:1fr;gap:8px}
 .txi-trade{padding:13px;border:1px solid #e0e8e2;background:#fff;border-radius:12px;min-width:0}
+.txi-trade-link{position:relative;width:100%;color:inherit;text-align:left;font:inherit;cursor:pointer;padding-right:116px}
+.txi-trade-link:hover{border-color:#82b79c;background:#f7fbf8}
+.txi-trade-link:focus-visible{outline:2px solid #2c9066;outline-offset:2px}
+.txi-trade-open{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:800;color:#176b4a;white-space:nowrap}
 .txi-trade-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .txi-trade-head strong{font-size:17px;letter-spacing:-.03em}
 .txi-trade-head time{font-size:11px;color:#76867e;white-space:nowrap}
@@ -34,7 +38,7 @@
 .txi-trade-meta{font-size:11px;color:#637970;line-height:1.55;margin:0;overflow-wrap:anywhere}
 .txi-empty{color:#748279;font-size:12px;padding:14px}
 .transaction-results.txi-enhanced>.transaction-stats,.transaction-results.txi-enhanced>.transaction-trend,.transaction-results.txi-enhanced>.transaction-list-section{display:none}
-@media(max-width:740px){.txi{padding:14px 12px}.txi-heading{align-items:stretch}.txi-scope-switch{grid-template-columns:1fr 1fr;max-width:none;width:100%}.txi-scope-button{min-width:0;padding:8px 6px;font-size:11px}.txi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.txi-trades{grid-template-columns:1fr}.txi-stat strong{font-size:16px}.txi-heading-copy{font-size:17px}.txi-chart{height:330px;min-height:330px}}
+@media(max-width:740px){.txi{padding:14px 12px}.txi-heading{align-items:stretch}.txi-scope-switch{grid-template-columns:1fr 1fr;max-width:none;width:100%}.txi-scope-button{min-width:0;padding:8px 6px;font-size:11px}.txi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.txi-stat strong{font-size:16px}.txi-heading-copy{font-size:17px}.txi-chart{height:330px;min-height:330px}.txi-trade-link{padding-right:13px;padding-bottom:35px}.txi-trade-open{top:auto;bottom:11px;transform:none}}
 @media(prefers-reduced-motion:reduce){.txi *{scroll-behavior:auto}}
 
 .txi-zoning{display:grid;gap:4px;padding:12px 13px;background:#eff5f0;border:1px solid #d7e4db;border-radius:10px;margin:0 0 14px}
