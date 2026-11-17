@@ -2,6 +2,7 @@
 const nf = new Intl.NumberFormat("ko-KR", {maximumFractionDigits:1});
 const integer = new Intl.NumberFormat("ko-KR", {maximumFractionDigits:0});
 const ECHARTS_URL="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js";
+const SQUARE_METERS_PER_PYEONG=3.305785;
 let echartsPromise;
 const trendCharts=new WeakMap();
 function loadECharts() {
@@ -21,6 +22,14 @@ function money(v) {
   if (!n) return "—";
   const e=Math.floor(n/10000), rem=Math.round(n%10000);
   return e ? `${e}억${rem ? " "+integer.format(rem)+"만원":""}` : `${integer.format(n)}만원`;
+}
+export function unitPricePerPyeong(unitPrice) {
+  const value=Number(unitPrice)||0;
+  return value>0?value*SQUARE_METERS_PER_PYEONG:0;
+}
+function pyeongPrice(unitPrice) {
+  const value=unitPricePerPyeong(unitPrice);
+  return value?`${integer.format(value/10000)}만원/평`:"계산 불가";
 }
 export function buildTransactionParcelQuery(parcelAddress,row) {
   if(!row?.legalDong||!row?.normalizedJibun)return "";
@@ -72,9 +81,10 @@ function insights(items, result, now=new Date()) {
   const pct=(a/b-1)*100;
   return `최근 6개월 ㎡당 중간가격은 직전 6개월 대비 ${pct>0?"+":""}${pct.toFixed(1)}% · ${recent.length}건 / ${prior.length}건 기준`;
 }
-function appendStat(root,label,value) {
+function appendStat(root,label,value,note="") {
   const item=el("div","txi-stat");
   item.append(el("small","",label),el("strong","",value));
+  if(note)item.append(el("span","txi-stat-note",note));
   root.append(item);
 }
 export function buildTransactionTrend(items) {
@@ -113,7 +123,7 @@ async function drawTrend(root,items) {
         const price=rows.find(row=>row.seriesName==="거래별 ㎡당 단가");
         const volume=rows.find(row=>row.seriesName==="월 거래 건수");
         const date=price?.data?.date||new Date(rows[0]?.value?.[0]).toISOString().slice(0,10);
-        return [`<strong>${date.replace(/-/g,".")}</strong>`,price?`㎡당 ${integer.format(price.value[1])}원 · ${money(price.data.amount)}`:"",volume?`해당 월 ${volume.value[1]}건`:""].filter(Boolean).join("<br>");
+        return [`<strong>${date.replace(/-/g,".")}</strong>`,price?`${pyeongPrice(price.value[1])} · ㎡당 ${integer.format(price.value[1])}원 · ${money(price.data.amount)}`:"",volume?`해당 월 ${volume.value[1]}건`:""].filter(Boolean).join("<br>");
       }},
       xAxis:{type:"time",boundaryGap:false,axisLabel:{color:"#64786d",formatter:value=>new Intl.DateTimeFormat("ko-KR",{year:"2-digit",month:"2-digit"}).format(value)},axisLine:{lineStyle:{color:"#cbd9d1"}},splitLine:{show:false}},
       yAxis:[
@@ -146,7 +156,7 @@ function drawList(root,items,areaKind,scope,parcelAddress,onOpenParcel) {
     const main=[row.area>0?`${areaKind} ${nf.format(row.area)}㎡`:"면적 미제공",row.floor?`${row.floor}층`:""].filter(Boolean).join(" · ");
     const subtitle=row.buildingName||[row.legalDong,row.jibun].filter(Boolean).join(" ");
     article.append(head,el("div","txi-trade-size",main),
-      el("p","txi-trade-meta",[`㎡당 ${row.unitPrice?integer.format(row.unitPrice)+"원":"계산 불가"}`,scope==="exact"?"":subtitle].filter(Boolean).join(" · ")));
+      el("p","txi-trade-meta",[pyeongPrice(row.unitPrice),`㎡당 ${row.unitPrice?integer.format(row.unitPrice)+"원":"계산 불가"}`,scope==="exact"?"":subtitle].filter(Boolean).join(" · ")));
     if(query)article.append(el("span","txi-trade-open","이 필지 조회 ›"));
     root.append(article);
   }
@@ -205,7 +215,7 @@ export function showTransactionExplorer(result, landUse = {}, {onOpenParcel} = {
     appendStat(metrics,"가장 최근 거래",ordered.length?money(ordered[0].amount):"—");
     appendStat(metrics,"거래금액 중간값",money(median(selection.map(x=>x.amount))));
     const rate=median(selection.map(x=>x.unitPrice));
-    appendStat(metrics,"㎡당 중간가격",rate?`${integer.format(rate)}원`:"—");
+    appendStat(metrics,"평당 중간가격",rate?pyeongPrice(rate):"—",rate?`㎡당 ${integer.format(rate)}원`:"");
     conclusion.textContent=insights(selection,{...result,scope:activeScope});
     void drawTrend(chart,selection);
     drawList(list,selection,result.definition?.areaKind||"면적",activeScope,landUse.address,onOpenParcel);

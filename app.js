@@ -397,15 +397,30 @@ async function searchAddress(query, {autoSelectAddress = ""} = {}) {
 
 function formatPrice(amount, year) {
   if (!amount) return {value: "미제공", note: "공시지가 정보 없음"};
-  return {value: `${new Intl.NumberFormat("ko-KR").format(amount)}원`, note: `${year ? `${year}년` : "기준연도 미제공"} · ㎡당`};
+  const pyeongPrice = amount * 3.305785;
+  return {
+    value: `평당 ${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 0}).format(pyeongPrice / 10000)}만원`,
+    note: `㎡당 ${new Intl.NumberFormat("ko-KR").format(amount)}원 · ${year ? `${year}년` : "기준연도 미제공"}`
+  };
+}
+
+function formatLandArea(value) {
+  const squareMeters = Number(String(value || "").replace(/[^\d.-]/g, ""));
+  if (!Number.isFinite(squareMeters) || squareMeters <= 0) return {value: "미제공", note: "공부상 면적"};
+  const pyeong = squareMeters / 3.305785;
+  return {
+    value: `${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 1}).format(pyeong)}평`,
+    note: `${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(squareMeters)}㎡ · 공부상 면적`
+  };
 }
 
 function renderFacts(data, item) {
   const price = formatPrice(data.price, data.priceYear);
+  const area = formatLandArea(data.area);
   const facts = [
     ["소재지", data.address || item.parcelAddress || item.primaryAddress, `PNU ${item.pnu}`],
     ["지목", data.landCategory || "미제공", "토지이음 기준"],
-    ["면적", data.area || "미제공", "공부상 면적"],
+    ["면적", area.value, area.note],
     ["개별공시지가", price.value, price.note]
   ];
   elements.factGrid.replaceChildren();
@@ -708,7 +723,7 @@ function renderTransactionResult(result) {
   renderTransactionTrend(result.trend);
   renderTransactionList(result.items, result.definition);
   // 독립적으로 로드되는 개선 UI가 실패해도 기존 실거래 화면과 주소 검색은 유지한다.
-  import("./transaction-explorer.js?v=20261117-6")
+  import("./transaction-explorer.js?v=20261117-7")
     .then(({showTransactionExplorer}) => {
       if (selectedTransactionResult === result && !elements.transactionResults.hidden) showTransactionExplorer(result, selectedData, {
         onOpenParcel(query){elements.input.value=query;void searchAddress(query,{autoSelectAddress:query});}
