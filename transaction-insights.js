@@ -33,13 +33,13 @@ export function buildTransactionInsights(result, now = new Date()) {
   });
   const recent = withAge.filter(x=>x.age>=0 && x.age<6);
   const previous = withAge.filter(x=>x.age>=6 && x.age<12);
-  if (recent.length >= 3 && previous.length >= 3) {
+  if (!result.failedMonths && recent.length >= 3 && previous.length >= 3) {
     const a=median(recent.map(x=>x.unitPrice));
     const b=median(previous.map(x=>x.unitPrice));
     const pct=(a/b-1)*100;
     messages.push(`최근 6개월 ㎡당 중간가격은 직전 6개월 대비 ${pct>=0?"+":""}${pct.toFixed(1)}% (${recent.length}건 vs ${previous.length}건, 유사 면적 기준)`);
   } else {
-    messages.push("최근 6개월과 직전 6개월의 비교 가능한 거래가 각각 3건 미만이어서 가격 변동률을 계산하지 않았습니다.");
+    messages.push("비교 표본이 부족하거나 일부 조회 월이 누락되어 가격 변동률을 계산하지 않았습니다.");
   }
   return {
     messages,
