@@ -1,0 +1,10 @@
+.transaction-insights{margin:14px 0 18px;padding:16px 18px;border:1px solid #cfe1d9;background:#f4f9f6;border-radius:14px;color:#20483d}
+.transaction-insights h4{font-size:16px;font-weight:800;margin:0 0 9px}
+.transaction-insights h5{font-size:13px;margin:14px 0 7px}
+.transaction-insights ul{margin:0;padding-left:18px;display:grid;gap:8px;line-height:1.55;font-size:13px}
+.transaction-area-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:8px}
+.transaction-area-groups>div{display:flex;flex-direction:column;gap:4px;background:white;border-radius:10px;padding:10px;border:1px solid #dce9e4}
+.transaction-area-groups strong{font-size:14px}
+.transaction-area-groups span,.transaction-area-groups small{font-size:12px;line-height:1.5}
+.transaction-insights__caution{font-size:11px!important;color:#586e66!important;margin:12px 0 0!important;line-height:1.5}
+@media(max-width:600px){.transaction-insights{padding:12px}.transaction-area-groups{grid-template-columns:1fr}}
