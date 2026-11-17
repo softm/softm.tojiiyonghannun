@@ -2,7 +2,11 @@
 .txi {margin:18px 0 24px;padding:20px;border:1px solid #d6e5dc;border-radius:18px;background:#f8fbf9;color:#193e32}
 .txi-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .txi-heading-copy{font-size:19px;font-weight:900;letter-spacing:-.04em}
-.txi-scope{font-size:11px;font-weight:700;background:#deede5;color:#245b44;border-radius:999px;padding:5px 9px}
+.txi-scope-switch{display:grid;grid-template-columns:repeat(2,minmax(145px,1fr));gap:7px;flex:1;max-width:540px}
+.txi-scope-button{min-height:42px;padding:8px 12px;border:1px solid #a9cdb9;border-radius:11px;background:#fff;color:#276248;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.txi-scope-button.active,.txi-scope-button[aria-pressed=true]{background:#1d6c50;border-color:#1d6c50;color:#fff}
+.txi-scope-button:disabled{cursor:not-allowed;opacity:.48}
+.txi-scope-button:focus-visible{outline:2px solid #2c9066;outline-offset:2px}
 .txi-intro{margin:0 0 10px;color:#647b6d;font-size:12px;line-height:1.5}
 .txi-filters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
 .txi-filter{font:inherit;font-size:12px;font-weight:800;min-height:37px;border-radius:100px;background:#fff;color:#3e6351;border:1px solid #d3e1d8;padding:7px 12px;cursor:pointer}
@@ -30,7 +34,7 @@
 .txi-trade-meta{font-size:11px;color:#637970;line-height:1.55;margin:0;overflow-wrap:anywhere}
 .txi-empty{color:#748279;font-size:12px;padding:14px}
 .transaction-results.txi-enhanced>.transaction-stats,.transaction-results.txi-enhanced>.transaction-trend,.transaction-results.txi-enhanced>.transaction-list-section{display:none}
-@media(max-width:740px){.txi{padding:14px 12px}.txi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.txi-trades{grid-template-columns:1fr}.txi-stat strong{font-size:16px}.txi-heading-copy{font-size:17px}.txi-chart{height:330px;min-height:330px}}
+@media(max-width:740px){.txi{padding:14px 12px}.txi-heading{align-items:stretch}.txi-scope-switch{grid-template-columns:1fr 1fr;max-width:none;width:100%}.txi-scope-button{min-width:0;padding:8px 6px;font-size:11px}.txi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.txi-trades{grid-template-columns:1fr}.txi-stat strong{font-size:16px}.txi-heading-copy{font-size:17px}.txi-chart{height:330px;min-height:330px}}
 @media(prefers-reduced-motion:reduce){.txi *{scroll-behavior:auto}}
 
 .txi-zoning{display:grid;gap:4px;padding:12px 13px;background:#eff5f0;border:1px solid #d7e4db;border-radius:10px;margin:0 0 14px}

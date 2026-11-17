@@ -703,7 +703,7 @@ function renderTransactionResult(result) {
   renderTransactionTrend(result.trend);
   renderTransactionList(result.items, result.definition);
   // 독립적으로 로드되는 개선 UI가 실패해도 기존 실거래 화면과 주소 검색은 유지한다.
-  import("./transaction-explorer.js?v=20261117-4")
+  import("./transaction-explorer.js?v=20261117-5")
     .then(({showTransactionExplorer}) => {
       if (selectedTransactionResult === result && !elements.transactionResults.hidden) showTransactionExplorer(result, selectedData);
     }).catch(error => console.warn("실거래 분석 UI 로딩 실패, 기본 표시 유지", error));

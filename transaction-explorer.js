@@ -146,12 +146,19 @@ export function showTransactionExplorer(result, landUse = {}) {
   const existing=document.querySelector("#transactionExplorer");
   if(existing)existing.remove();
   parent.classList.remove("txi-enhanced");
-  const items=(result.items||[]).filter(x=>!x.cancelled&&x.amount>0);
+  const clean=items=>(items||[]).filter(x=>!x.cancelled&&x.amount>0);
+  const exactItems=clean(result.exactItems ?? (result.scope==="exact"?result.items:[]));
+  const nearbyItems=clean(result.nearbyItems ?? (result.scope==="nearby"?result.items:[]));
   const groupable=["apartment","officetel","rowHouse"].includes(result.type);
-  const options=groupable?cohorts(items):[];
   const section=el("section","txi",undefined);section.id="transactionExplorer";
   const header=el("div","txi-heading");
-  header.append(el("div","txi-heading-copy","거래 가격 분석"),el("span","txi-scope",result.scope==="exact"?"해당 필지·단지 공개 거래":"법정동 비교 거래"));
+  const scopeSwitch=el("div","txi-scope-switch");scopeSwitch.setAttribute("aria-label","거래 비교 범위");
+  const ranges=[
+    {key:"exact",label:"해당 필지·단지",items:exactItems},
+    {key:"nearby",label:"같은 법정동 비교",items:nearbyItems}
+  ].filter(range=>range.items.length||range.key==="exact");
+  for(const range of ranges){const button=el("button","txi-scope-button",`${range.label} · ${integer.format(range.items.length)}건`);button.type="button";button.dataset.scope=range.key;button.disabled=!range.items.length;scopeSwitch.append(button);range.button=button;}
+  header.append(el("div","txi-heading-copy","거래 가격 분석"),scopeSwitch);
   section.append(header);
   const planning=(landUse.nationalPlan || []).map(zone=>String(zone.name||"").trim()).filter(Boolean);
   if (planning.length) {
@@ -162,28 +169,19 @@ export function showTransactionExplorer(result, landUse = {}) {
   }
   const filters=el("div","txi-filters");
   filters.setAttribute("aria-label","거래 면적 선택");
-  const allButton=el("button","txi-filter active","전체");allButton.type="button";allButton.setAttribute("aria-pressed","true");filters.append(allButton);
-  const entries=[{button:allButton,items,anchor:null}];
-  if(options.length>1){
-    for(const group of options.slice(0,8)) {
-      const button=el("button","txi-filter",`${nf.format(group.anchor)}㎡ · ${group.items.length}건`);
-      button.type="button";button.setAttribute("aria-pressed","false");
-      filters.append(button);entries.push({button,items:group.items,anchor:group.anchor});
-    }
-  }
-  if(entries.length>1)section.append(el("p","txi-intro","면적이 다른 거래는 직접 비교하기 어렵습니다. 비교할 전용면적을 선택하세요."),filters);
+  const intro=el("p","txi-intro","면적이 다른 거래는 직접 비교하기 어렵습니다. 비교할 전용면적을 선택하세요.");
+  section.append(intro,filters);
   const metrics=el("div","txi-metrics");
   const conclusion=el("p","txi-conclusion");
   const chartTitle=el("h4","txi-section-heading","거래기간 ㎡당 가격 흐름");
   const chart=el("div","txi-trend");
   const recentTitle=el("h4","txi-section-heading","최근 거래");
   const list=el("div","txi-trades");
-  const note=el("p","txi-caution",result.scope==="exact"
-    ?"공개 지번이 일치하는 거래입니다. 동일 단지 내에서도 동·층·향·상태에 따라 가격이 달라질 수 있습니다."
-    :"법정동 범위의 비교 거래입니다. 선택 필지의 거래 또는 시세로 단정할 수 없습니다.");
+  const note=el("p","txi-caution");
   section.append(metrics,conclusion,chartTitle,chart,recentTitle,list,note);
   parent.querySelector("#transactionStats")?.before(section);
   if(!section.isConnected)parent.prepend(section);
+  let entries=[],activeScope=result.scope==="exact"&&exactItems.length?"exact":"nearby";
   function select(index) {
     for(const [i,x] of entries.entries()){
       x.button.classList.toggle("active",i===index);
@@ -197,15 +195,29 @@ export function showTransactionExplorer(result, landUse = {}) {
     appendStat(metrics,"거래금액 중간값",money(median(selection.map(x=>x.amount))));
     const rate=median(selection.map(x=>x.unitPrice));
     appendStat(metrics,"㎡당 중간가격",rate?`${integer.format(rate)}원`:"—");
-    conclusion.textContent=insights(selection,result);
+    conclusion.textContent=insights(selection,{...result,scope:activeScope});
     void drawTrend(chart,selection);
-    drawList(list,selection,result.definition?.areaKind||"면적",result.scope);
+    drawList(list,selection,result.definition?.areaKind||"면적",activeScope);
+    note.textContent=activeScope==="exact"
+      ?"공개 지번이 일치하는 거래입니다. 동일 단지 내에서도 동·층·향·상태에 따라 가격이 달라질 수 있습니다."
+      :"선택 필지 거래를 제외한 같은 법정동의 비교 거래입니다. 선택 필지의 시세로 단정할 수 없습니다.";
   }
-  entries.forEach((x,i)=>x.button.addEventListener("click",()=>select(i)));
-  // 동일 단지에 여러 면적대가 있으면 표본이 가장 많은 그룹을 첫 비교 기준으로 선택.
-  const defaultIndex=entries.length>1
-    ? entries.map((entry,index)=>({index,count:entry.items.length})).slice(1).sort((a,b)=>b.count-a.count)[0].index
-    : 0;
-  select(defaultIndex);
+  function selectScope(scope) {
+    const range=ranges.find(item=>item.key===scope&&item.items.length) || ranges.find(item=>item.items.length);
+    if(!range)return;
+    activeScope=range.key;
+    for(const item of ranges){const active=item===range;item.button.classList.toggle("active",active);item.button.setAttribute("aria-pressed",String(active));}
+    filters.replaceChildren();
+    const allButton=el("button","txi-filter active","전체");allButton.type="button";allButton.setAttribute("aria-pressed","true");filters.append(allButton);
+    entries=[{button:allButton,items:range.items,anchor:null}];
+    const options=groupable?cohorts(range.items):[];
+    if(options.length>1){for(const group of options.slice(0,8)){const button=el("button","txi-filter",`${nf.format(group.anchor)}㎡ · ${group.items.length}건`);button.type="button";button.setAttribute("aria-pressed","false");filters.append(button);entries.push({button,items:group.items,anchor:group.anchor});}}
+    intro.hidden=entries.length<=1;filters.hidden=entries.length<=1;
+    entries.forEach((entry,index)=>entry.button.addEventListener("click",()=>select(index)));
+    const defaultIndex=entries.length>1?entries.map((entry,index)=>({index,count:entry.items.length})).slice(1).sort((a,b)=>b.count-a.count)[0].index:0;
+    select(defaultIndex);
+  }
+  ranges.forEach(range=>range.button.addEventListener("click",()=>selectScope(range.key)));
+  selectScope(activeScope);
   parent.classList.add("txi-enhanced");
 }

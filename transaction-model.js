@@ -215,7 +215,9 @@ export function analyzeTransactions(items, {type, pnu, parcelAddress = "", selec
   const areaComparable = type === "land" && targetArea > 0
     ? valid.filter((item) => item.area >= targetArea * .5 && item.area <= targetArea * 2 && sameLegalDong(item, parcelAddress))
     : valid.filter((item) => sameLegalDong(item, parcelAddress));
-  const comparable = exact.length ? exact : areaComparable;
+  const exactKeys = new Set(exact);
+  const nearby = areaComparable.filter((item) => !exactKeys.has(item));
+  const comparable = exact.length ? exact : nearby;
   const scope = exact.length ? "exact" : "nearby";
   const ordered = [...comparable].sort((a, b) => b.contractDate.localeCompare(a.contractDate));
   const amounts = ordered.map((item) => item.amount);
@@ -241,6 +243,8 @@ export function analyzeTransactions(items, {type, pnu, parcelAddress = "", selec
     minUnitPrice: unitPrices.length ? Math.min(...unitPrices) : 0,
     maxUnitPrice: unitPrices.length ? Math.max(...unitPrices) : 0,
     trend,
+    exactItems: [...exact].sort((a, b) => b.contractDate.localeCompare(a.contractDate)),
+    nearbyItems: [...nearby].sort((a, b) => b.contractDate.localeCompare(a.contractDate)),
     items: ordered
   };
 }

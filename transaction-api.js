@@ -8,7 +8,7 @@ import {
   recommendTransactionType,
   recentMonths,
   runWithConcurrency
-} from "./transaction-model.js?v=20261013-11";
+} from "./transaction-model.js?v=20261117-12";
 
 const DATABASE_NAME = "tojiiyonghannun-rtms-v1";
 const STORE_NAME = "monthly-transactions";
