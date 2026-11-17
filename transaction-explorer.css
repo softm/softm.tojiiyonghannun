@@ -30,3 +30,8 @@
 .transaction-results.txi-enhanced>.transaction-stats,.transaction-results.txi-enhanced>.transaction-trend,.transaction-results.txi-enhanced>.transaction-list-section{display:none}
 @media(max-width:740px){.txi{padding:14px 12px}.txi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.txi-trades{grid-template-columns:1fr}.txi-stat strong{font-size:16px}.txi-heading-copy{font-size:17px}}
 @media(prefers-reduced-motion:reduce){.txi *{scroll-behavior:auto}}
+
+.txi-zoning{display:grid;gap:4px;padding:12px 13px;background:#eff5f0;border:1px solid #d7e4db;border-radius:10px;margin:0 0 14px}
+.txi-zoning strong{font-size:12px;color:#285b43}
+.txi-zoning span{font-size:13px;font-weight:800;line-height:1.5}
+.txi-zoning small{font-size:10px;color:#718174;line-height:1.5}
