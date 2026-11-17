@@ -2,7 +2,7 @@ import {buildReportModel} from "./report-model.js?v=20261013-12";
 import {buildTransactionInsights} from "./transaction-insights.js?v=20261117-1";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
 import {buildParcelShareUrl, parseParcelShareUrl} from "./share-model.js?v=20261013-15";
-import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
+import {TRANSACTION_TYPES, hasTransactionSource, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261117-1";
 import {PROPERTY_DOCUMENT_VIEWER_TARGET, hasDistrictPlan} from "./property-documents.js?v=20261013-17";
 import {
   requestAddressSearch,
@@ -597,14 +597,12 @@ function updateTransactionType(type) {
     button.setAttribute("aria-selected", String(active));
   });
   elements.transactionQueryTitle.textContent = `${TRANSACTION_TYPES[type].label} 매매 실거래`;
-  elements.transactionQueryHint.textContent = "버튼을 누르면 선택 지역의 최근 24개월 자료를 조회합니다.";
+  elements.transactionQueryHint.textContent = "수집 JSON을 우선 조회하고 미수집 월은 공공데이터 API로 보완합니다.";
   elements.transactionProgress.hidden = true;
   elements.transactionResults.hidden = true;
-  elements.transactionMessage.textContent = hasMolitApiKey()
-    ? ""
-    : "실거래 조회용 공공데이터 인증키가 설정되지 않았습니다.";
-  elements.transactionMessage.className = `transaction-message${hasMolitApiKey() ? "" : " error"}`;
-  elements.loadTransactions.disabled = !hasMolitApiKey();
+  elements.transactionMessage.textContent = "";
+  elements.transactionMessage.className = "transaction-message";
+  elements.loadTransactions.disabled = !hasTransactionSource();
 }
 
 function resetTransactionPanel(item, data) {
@@ -635,7 +633,7 @@ async function initializeTransactionPanel(item, data) {
   elements.transactionTypeTabs.querySelector(`[data-transaction-type="${recommendation}"]`)?.classList.add("recommended");
   updateTransactionType(recommendation);
   elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[recommendation].label} 유형으로 최근 24개월을 자동 조회합니다.`;
-  if (hasMolitApiKey()) await loadTransactionsForSelectedParcel({automatic: true});
+  if (hasTransactionSource()) await loadTransactionsForSelectedParcel({automatic: true});
 }
 
 function appendTransactionStat(label, value, note = "") {
@@ -723,7 +721,9 @@ function renderTransactionResult(result) {
   elements.transactionScopeBadge.textContent = exact ? "해당 필지·단지 거래" : "법정동 유사 거래";
   elements.transactionScopeBadge.classList.toggle("exact", exact);
   elements.transactionResultTitle.textContent = `${result.definition.label} 최근 24개월 요약`;
-  const notes = [`정상 거래 ${result.totalCount}건`];
+  const notes = [`조회 거래 ${result.totalCount}건`];
+  if (result.collectedMonths) notes.push(`수집 JSON ${result.collectedMonths}개월`);
+  if (result.collectedUpdatedAt && result.collectedMonths) notes.push(`수집 갱신 ${String(result.collectedUpdatedAt).slice(0,10)}`);
   if (result.cancelledCount) notes.push(`취소 ${result.cancelledCount}건 제외`);
   if (result.failedMonths) notes.push(`${result.failedMonths}개월 불러오기 실패`);
   if (result.truncated) notes.push("일부 월 최대 5페이지 표시");
@@ -745,7 +745,7 @@ function renderTransactionResult(result) {
     elements.transactionMessage.textContent = `일부 자료를 불러오지 못해 ${24 - result.failedMonths}개월 결과만 표시합니다.`;
     elements.transactionMessage.className = "transaction-message warning";
   } else {
-    elements.transactionMessage.textContent = result.cachedMonths ? `${result.cachedMonths}개월 자료는 이 브라우저의 캐시를 사용했습니다.` : "";
+    elements.transactionMessage.textContent = [result.collectedMonths ? `수집 데이터 ${result.collectedMonths}개월 사용` : "", result.cachedMonths ? `브라우저 캐시 ${result.cachedMonths}개월 사용` : ""].filter(Boolean).join(" · ");
     elements.transactionMessage.className = "transaction-message";
   }
 }
@@ -761,7 +761,7 @@ async function loadTransactionsForSelectedParcel({automatic = false} = {}) {
   elements.transactionMessage.textContent = "";
   elements.transactionMessage.className = "transaction-message";
   elements.transactionProgress.hidden = false;
-  elements.transactionProgressValue.textContent = "0 / 24개월";
+  elements.transactionProgressValue.textContent = "수집 데이터 확인 중";
   elements.transactionProgressBar.style.width = "0%";
   try {
     const result = await requestTransactions({
@@ -786,7 +786,7 @@ async function loadTransactionsForSelectedParcel({automatic = false} = {}) {
     if (automatic) elements.transactionQueryHint.textContent = "자동 조회하지 못했습니다. 잠시 후 다시 조회해 주세요.";
   } finally {
     elements.transactionProgress.hidden = true;
-    elements.loadTransactions.disabled = !hasMolitApiKey();
+    elements.loadTransactions.disabled = !hasTransactionSource();
     elements.loadTransactions.textContent = "최근 24개월 조회";
   }
 }
@@ -1317,7 +1317,7 @@ elements.transactionTypeTabs.addEventListener("click", (event) => {
   if (button) {
     transactionAutoSelectionToken += 1;
     updateTransactionType(button.dataset.transactionType);
-    if (selectedItem && selectedData && hasMolitApiKey()) {
+    if (selectedItem && selectedData && hasTransactionSource()) {
       elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[selectedTransactionType].label} 유형으로 최근 24개월을 바로 조회합니다.`;
       transactionInitializationPromise = loadTransactionsForSelectedParcel();
     }
