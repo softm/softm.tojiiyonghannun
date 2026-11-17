@@ -30,6 +30,10 @@ export function getMolitApiKey() {
 export function hasMolitApiKey() {
   return Boolean(getMolitApiKey());
 }
+export function hasTransactionSource() {
+  // 시군구별 수집 JSON 게시 상황은 실제 조회 시 검증한다.
+  return true;
+}
 
 function normalizedServiceKey(value) {
   const key = String(value || "").trim();
@@ -186,8 +190,18 @@ export async function requestTransactions({
   if (!definition) throw new TransactionApiError("지원하지 않는 거래 유형입니다.", "INVALID_TYPE");
   const {lawdCd} = parcelIdentity(pnu);
   const months = recentMonths(24, now);
+  let published = {months:new Map(),updatedAt:""};
+  try {
+    // 주소 검색과 무관하게, 거래 조회가 시작된 뒤에만 수집기 모듈 로드.
+    const {loadCollectedTransactions} = await import("./transaction-collected.js?v=20261117-2");
+    published = await loadCollectedTransactions({type,lawdCd,parcelAddress,months,signal,fetchImpl});
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    // 미게시·오류 시 기존 국토부 API 조회 유지.
+  }
   let completed = 0;
-  const tasks = months.map((month) => async () => fetchMonth({type, lawdCd, month, signal, fetchImpl}));
+  const tasks = months.map((month) => async () =>
+    published.months.get(month) || fetchMonth({type,lawdCd,month,signal,fetchImpl}));
   const settled = await runWithConcurrency(tasks, 3, () => {
     completed += 1;
     onProgress({completed, total: months.length, percent: Math.round(completed / months.length * 100)});
@@ -208,7 +222,9 @@ export async function requestTransactions({
     requestedMonths: months.length,
     failedMonths: failures.length,
     truncated: fulfilled.some((record) => record.truncated),
-    cachedMonths: fulfilled.filter((record) => record.cached).length
+    cachedMonths: fulfilled.filter((record) => record.cached).length,
+    collectedMonths: fulfilled.filter((record) => record.source === "collected").length,
+    collectedUpdatedAt: published.updatedAt || ""
   };
 }
 
