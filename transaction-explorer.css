@@ -14,10 +14,19 @@
 .txi-stat strong{font-size:clamp(14px,1.9vw,20px);line-height:1.35;overflow-wrap:anywhere;letter-spacing:-.03em}
 .txi-conclusion{font-size:13px;line-height:1.6;margin:13px 0 20px;padding:12px 13px;border-left:3px solid #2d8060;background:#edf6f0;border-radius:0 8px 8px 0}
 .txi-section-heading{margin:19px 0 11px;font-size:15px;letter-spacing:-.02em}
-.txi-chart{display:flex;gap:5px;align-items:stretch;overflow-x:auto;min-height:156px;padding:8px 3px 4px;border-bottom:1px solid #cfddd4}
-.txi-bar{min-width:23px;flex:1 0 24px;max-width:45px;height:150px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}
-.txi-bar i{display:block;width:76%;min-height:4px;background:linear-gradient(#7db89a,#247b59);border-radius:5px 5px 2px 2px}
-.txi-bar small{font-size:9px;white-space:nowrap;color:#637970}
+.txi-chart{overflow-x:auto;min-height:280px;border:1px solid #dce8e0;border-radius:12px;background:#fff}
+.txi-chart svg{display:block;width:max(100%,720px);height:auto;min-height:280px}
+.txi-grid{stroke:#e4ece7;stroke-width:1}
+.txi-axis{fill:#64786d;font-size:10px}
+.txi-price-line{fill:none;stroke:#176b4a;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.txi-price-dot{fill:#fff;stroke:#176b4a;stroke-width:2.5}
+.txi-price-dot:focus{outline:none;fill:#f5b942;stroke:#704f08}
+.txi-volume-bar{fill:#a8cdb9;opacity:.82;rx:2px}
+.txi-legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 8px;color:#526b5e;font-size:11px;font-weight:700}
+.txi-legend span{display:inline-flex;align-items:center;gap:6px}
+.txi-legend span::before{content:"";display:inline-block;width:18px}
+.txi-legend-price::before{border-top:3px solid #176b4a;border-radius:9px}
+.txi-legend-volume::before{height:9px;background:#a8cdb9;border-radius:2px}
 .txi-note,.txi-caution{font-size:11px;line-height:1.6;color:#6b7b73;margin:9px 0}
 .txi-trades{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .txi-trade{padding:13px;border:1px solid #e0e8e2;background:#fff;border-radius:12px;min-width:0}

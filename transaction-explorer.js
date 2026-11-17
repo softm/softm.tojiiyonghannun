@@ -54,27 +54,62 @@ function appendStat(root,label,value) {
   item.append(el("small","",label),el("strong","",value));
   root.append(item);
 }
+export function buildTransactionTrend(items) {
+  const points=items.filter(x=>x.unitPrice>0&&/^\d{4}-\d{2}-\d{2}$/.test(x.contractDate||""))
+    .map((x,index)=>({...x,time:new Date(`${x.contractDate}T00:00:00`).getTime(),sourceIndex:index}))
+    .filter(x=>Number.isFinite(x.time)).sort((a,b)=>a.time-b.time||a.unitPrice-b.unitPrice||a.sourceIndex-b.sourceIndex);
+  const months=new Map();
+  for(const point of points) {
+    const month=point.contractDate.slice(0,7);
+    months.set(month,(months.get(month)||0)+1);
+  }
+  return {points,months:[...months].map(([month,count])=>({month,count}))};
+}
+function svgNode(tag,attributes={}) {
+  const node=document.createElementNS("http://www.w3.org/2000/svg",tag);
+  for(const [name,value] of Object.entries(attributes))node.setAttribute(name,String(value));
+  return node;
+}
 function drawTrend(root,items) {
-  const byMonth=new Map();
-  for(const item of items){
-    if(!item.unitPrice||!/^\d{6}$/.test(item.yearMonth||""))continue;
-    if(!byMonth.has(item.yearMonth))byMonth.set(item.yearMonth,[]);
-    byMonth.get(item.yearMonth).push(item.unitPrice);
-  }
-  const rows=[...byMonth].sort((a,b)=>a[0].localeCompare(b[0])).map(([month,v])=>({month,price:median(v),count:v.length})).slice(-24);
+  const {points,months}=buildTransactionTrend(items);
   root.replaceChildren();
-  if(!rows.length){root.append(el("p","txi-empty","가격을 계산할 거래가 없습니다."));return;}
-  const max=Math.max(...rows.map(x=>x.price));
-  const chart=el("div","txi-chart");
-  chart.setAttribute("role","img");
-  chart.setAttribute("aria-label","월별 제곱미터당 중간가격과 거래 건수");
-  for(const x of rows) {
-    const cell=el("div","txi-bar");
-    cell.title=`${x.month.slice(0,4)}.${x.month.slice(4)} · ㎡당 ${integer.format(x.price)}원 · ${x.count}건`;
-    const shape=el("i","");shape.style.height=`${Math.max(5,x.price/max*100)}%`;
-    cell.append(shape,el("small","",`${x.month.slice(2,4)}.${x.month.slice(4)}`));chart.append(cell);
+  if(!points.length){root.append(el("p","txi-empty","가격을 계산할 거래가 없습니다."));return;}
+  const width=Math.max(720,points.length*24),height=280;
+  const pad={left:62,right:24,top:22,bottom:54},plotBottom=210,volumeTop=220,volumeBottom=246;
+  const times=points.map(x=>x.time),prices=points.map(x=>x.unitPrice);
+  const minTime=Math.min(...times),maxTime=Math.max(...times),timeSpan=Math.max(86400000,maxTime-minTime);
+  const rawMin=Math.min(...prices),rawMax=Math.max(...prices),priceSpan=Math.max(rawMax*.08,rawMax-rawMin,1);
+  const minPrice=Math.max(0,rawMin-priceSpan*.16),maxPrice=rawMax+priceSpan*.16;
+  const x=time=>pad.left+(time-minTime)/timeSpan*(width-pad.left-pad.right);
+  const y=price=>pad.top+(maxPrice-price)/(maxPrice-minPrice)*(plotBottom-pad.top);
+  const svg=svgNode("svg",{viewBox:`0 0 ${width} ${height}`,role:"img","aria-label":`거래 시점별 제곱미터당 단가 ${points.length}건과 월별 거래량`});
+  for(let index=0;index<4;index+=1){
+    const ratio=index/3,gridY=pad.top+ratio*(plotBottom-pad.top),value=maxPrice-ratio*(maxPrice-minPrice);
+    svg.append(svgNode("line",{class:"txi-grid",x1:pad.left,x2:width-pad.right,y1:gridY,y2:gridY}));
+    const label=svgNode("text",{class:"txi-axis",x:pad.left-8,y:gridY+4,"text-anchor":"end"});label.textContent=`${nf.format(value/10000)}만`;svg.append(label);
   }
-  root.append(chart,el("p","txi-note","거래가 있는 월만 표시 · 월별 ㎡당 중간가격 · 빈 달은 0원이 아닙니다."));
+  const line=svgNode("path",{class:"txi-price-line",d:points.map((point,index)=>`${index?"L":"M"}${x(point.time).toFixed(1)},${y(point.unitPrice).toFixed(1)}`).join(" ")});
+  svg.append(line);
+  for(const point of points){
+    const dot=svgNode("circle",{class:"txi-price-dot",cx:x(point.time).toFixed(1),cy:y(point.unitPrice).toFixed(1),r:4,tabindex:0});
+    const title=svgNode("title");title.textContent=`${point.contractDate.replace(/-/g,".")} · ㎡당 ${integer.format(point.unitPrice)}원 · ${money(point.amount)}`;dot.append(title);svg.append(dot);
+  }
+  const maxCount=Math.max(...months.map(x=>x.count));
+  for(const month of months){
+    const start=new Date(`${month.month}-01T00:00:00`).getTime();
+    const end=new Date(new Date(start).getFullYear(),new Date(start).getMonth()+1,0).getTime();
+    const center=x(Math.min(maxTime,Math.max(minTime,(start+end)/2)));
+    const bar=svgNode("rect",{class:"txi-volume-bar",x:center-7,y:volumeBottom-(month.count/maxCount)*(volumeBottom-volumeTop),width:14,height:(month.count/maxCount)*(volumeBottom-volumeTop)});
+    const title=svgNode("title");title.textContent=`${month.month.replace("-",".")} · ${month.count}건`;bar.append(title);svg.append(bar);
+  }
+  const labelIndexes=[0,Math.floor((points.length-1)/2),points.length-1].filter((value,index,array)=>array.indexOf(value)===index);
+  for(const index of labelIndexes){
+    const point=points[index],label=svgNode("text",{class:"txi-axis",x:x(point.time),y:272,"text-anchor":index===0?"start":index===points.length-1?"end":"middle"});
+    label.textContent=point.contractDate.slice(2,7).replace("-",".");svg.append(label);
+  }
+  const scroller=el("div","txi-chart");scroller.append(svg);
+  const legend=el("div","txi-legend");legend.append(el("span","txi-legend-price","거래별 ㎡당 단가"),el("span","txi-legend-volume","월 거래 건수"));
+  root.append(legend,scroller,el("p","txi-note","가격은 월평균이 아닌 개별 계약일 기준입니다. 선은 거래 순서를 연결하며, 하단 막대만 월별 거래 건수를 나타냅니다."));
 }
 function drawList(root,items,areaKind,scope) {
   root.replaceChildren();
@@ -126,7 +161,7 @@ export function showTransactionExplorer(result, landUse = {}) {
   if(entries.length>1)section.append(el("p","txi-intro","면적이 다른 거래는 직접 비교하기 어렵습니다. 비교할 전용면적을 선택하세요."),filters);
   const metrics=el("div","txi-metrics");
   const conclusion=el("p","txi-conclusion");
-  const chartTitle=el("h4","txi-section-heading","월별 ㎡당 거래단가");
+  const chartTitle=el("h4","txi-section-heading","거래기간 ㎡당 가격 흐름");
   const chart=el("div","txi-trend");
   const recentTitle=el("h4","txi-section-heading","최근 거래");
   const list=el("div","txi-trades");
