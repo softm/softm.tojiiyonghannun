@@ -1,8 +1,7 @@
 import {buildReportModel} from "./report-model.js?v=20261013-12";
-import {buildTransactionInsights} from "./transaction-insights.js?v=20261117-1";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
 import {buildParcelShareUrl, parseParcelShareUrl} from "./share-model.js?v=20261013-15";
-import {TRANSACTION_TYPES, hasTransactionSource, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261117-1";
+import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
 import {PROPERTY_DOCUMENT_VIEWER_TARGET, hasDistrictPlan} from "./property-documents.js?v=20261013-17";
 import {
   requestAddressSearch,
@@ -597,12 +596,14 @@ function updateTransactionType(type) {
     button.setAttribute("aria-selected", String(active));
   });
   elements.transactionQueryTitle.textContent = `${TRANSACTION_TYPES[type].label} 매매 실거래`;
-  elements.transactionQueryHint.textContent = "수집 JSON을 우선 조회하고 미수집 월은 공공데이터 API로 보완합니다.";
+  elements.transactionQueryHint.textContent = "버튼을 누르면 선택 지역의 최근 24개월 자료를 조회합니다.";
   elements.transactionProgress.hidden = true;
   elements.transactionResults.hidden = true;
-  elements.transactionMessage.textContent = "";
-  elements.transactionMessage.className = "transaction-message";
-  elements.loadTransactions.disabled = !hasTransactionSource();
+  elements.transactionMessage.textContent = hasMolitApiKey()
+    ? ""
+    : "실거래 조회용 공공데이터 인증키가 설정되지 않았습니다.";
+  elements.transactionMessage.className = `transaction-message${hasMolitApiKey() ? "" : " error"}`;
+  elements.loadTransactions.disabled = !hasMolitApiKey();
 }
 
 function resetTransactionPanel(item, data) {
@@ -633,7 +634,7 @@ async function initializeTransactionPanel(item, data) {
   elements.transactionTypeTabs.querySelector(`[data-transaction-type="${recommendation}"]`)?.classList.add("recommended");
   updateTransactionType(recommendation);
   elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[recommendation].label} 유형으로 최근 24개월을 자동 조회합니다.`;
-  if (hasTransactionSource()) await loadTransactionsForSelectedParcel({automatic: true});
+  if (hasMolitApiKey()) await loadTransactionsForSelectedParcel({automatic: true});
 }
 
 function appendTransactionStat(label, value, note = "") {
@@ -664,54 +665,21 @@ function renderTransactionTrend(trend) {
   elements.transactionTrendChart.append(chart);
 }
 
-function renderTransactionList(items, definition, scope = "nearby") {
+function renderTransactionList(items, definition) {
   elements.transactionList.replaceChildren();
   if (!items.length) {
     elements.transactionList.append(createElement("p", "transaction-empty", "표시할 거래가 없습니다."));
     return;
   }
-  items.slice(0, 20).forEach((item) => {
+  items.slice(0, 12).forEach((item) => {
     const article = createElement("article", "transaction-item");
     const head = createElement("div", "transaction-item__head");
     head.append(createElement("strong", "", formatDealAmount(item.amount)), createElement("time", "", formatContractDate(item.contractDate)));
-    const title = [item.area ? `${definition.areaKind} ${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(item.area)}㎡` : "", item.floor ? `${item.floor}층` : ""].filter(Boolean).join(" · ") || item.buildingName || TRANSACTION_TYPES[item.type].label;
-    const meta = [scope === "exact" ? "" : item.buildingName || [item.legalDong, item.jibun].filter(Boolean).join(" "), formatUnitPrice(item.unitPrice)].filter(Boolean);
+    const title = item.buildingName || [item.legalDong, item.jibun].filter(Boolean).join(" ") || TRANSACTION_TYPES[item.type].label;
+    const meta = [item.area ? `${definition.areaKind} ${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(item.area)}㎡` : "", item.floor ? `${item.floor}층` : "", formatUnitPrice(item.unitPrice)].filter(Boolean);
     article.append(head, createElement("b", "transaction-item__title", title), createElement("p", "", meta.join(" · ")));
     elements.transactionList.append(article);
   });
-}
-
-function renderTransactionInsights(result) {
-  let panel = document.querySelector("#transactionInsights");
-  if (!panel) {
-    panel = document.createElement("section");
-    panel.id = "transactionInsights";
-    panel.className = "transaction-insights";
-    panel.setAttribute("aria-label", "실거래가 분석 인사이트");
-    elements.transactionStats.before(panel);
-  }
-  panel.replaceChildren();
-  const insight = buildTransactionInsights(result);
-  panel.append(createElement("h4", "", "이 거래에서 읽을 수 있는 정보"));
-  const list = document.createElement("ul");
-  for (const message of insight.messages) list.append(createElement("li", "", message));
-  panel.append(list);
-  if (insight.areaGroups.length > 1) {
-    panel.append(createElement("h5", "", "면적대별 가격 비교"));
-    const table = document.createElement("div");
-    table.className = "transaction-area-groups";
-    for (const group of insight.areaGroups) {
-      const article = document.createElement("div");
-      article.append(
-        createElement("strong", "", `${group.area.toFixed(1)}㎡ 안팎`),
-        createElement("span", "", `${group.count}건 · 중간 거래금액 ${formatDealAmount(group.medianAmount)}`),
-        createElement("small", "", `㎡당 ${formatUnitPrice(group.medianUnitPrice)}`)
-      );
-      table.append(article);
-    }
-    panel.append(table);
-  }
-  panel.append(createElement("p", "transaction-insights__caution", insight.caution));
 }
 
 function renderTransactionResult(result) {
@@ -721,22 +689,19 @@ function renderTransactionResult(result) {
   elements.transactionScopeBadge.textContent = exact ? "해당 필지·단지 거래" : "법정동 유사 거래";
   elements.transactionScopeBadge.classList.toggle("exact", exact);
   elements.transactionResultTitle.textContent = `${result.definition.label} 최근 24개월 요약`;
-  const notes = [`조회 거래 ${result.totalCount}건`];
-  if (result.collectedMonths) notes.push(`수집 JSON ${result.collectedMonths}개월`);
-  if (result.collectedUpdatedAt && result.collectedMonths) notes.push(`수집 갱신 ${String(result.collectedUpdatedAt).slice(0,10)}`);
+  const notes = [`정상 거래 ${result.totalCount}건`];
   if (result.cancelledCount) notes.push(`취소 ${result.cancelledCount}건 제외`);
   if (result.failedMonths) notes.push(`${result.failedMonths}개월 불러오기 실패`);
   if (result.truncated) notes.push("일부 월 최대 5페이지 표시");
   elements.transactionResultMeta.textContent = notes.join(" · ");
   elements.transactionStats.replaceChildren();
-  appendTransactionStat("거래 건수", `${result.totalCount}건`);
+  appendTransactionStat("거래 건수", `${result.totalCount}건`, exact ? "공개 지번 일치" : "비교 가능한 공개 거래");
   appendTransactionStat("최근 거래일", result.latestDate ? formatContractDate(result.latestDate) : "-");
   appendTransactionStat("거래금액 중앙값", formatDealAmount(result.medianAmount));
   appendTransactionStat("㎡당 중앙값", formatUnitPrice(result.medianUnitPrice), result.minUnitPrice ? `${formatUnitPrice(result.minUnitPrice)} ~ ${formatUnitPrice(result.maxUnitPrice)}` : "면적 정보 없음");
-  renderTransactionInsights(result);
   renderTransactionTrend(result.trend);
-  renderTransactionList(result.items, result.definition, result.scope);
-  if (!result.totalCount && !result.failedMonths) {
+  renderTransactionList(result.items, result.definition);
+  if (!result.totalCount) {
     elements.transactionMessage.textContent = exact
       ? "최근 24개월 동안 공개된 해당 필지·단지 거래가 없습니다."
       : "최근 24개월 동안 비교 가능한 공개 거래가 없습니다.";
@@ -745,7 +710,7 @@ function renderTransactionResult(result) {
     elements.transactionMessage.textContent = `일부 자료를 불러오지 못해 ${24 - result.failedMonths}개월 결과만 표시합니다.`;
     elements.transactionMessage.className = "transaction-message warning";
   } else {
-    elements.transactionMessage.textContent = [result.collectedMonths ? `수집 데이터 ${result.collectedMonths}개월 사용` : "", result.cachedMonths ? `브라우저 캐시 ${result.cachedMonths}개월 사용` : ""].filter(Boolean).join(" · ");
+    elements.transactionMessage.textContent = result.cachedMonths ? `${result.cachedMonths}개월 자료는 이 브라우저의 캐시를 사용했습니다.` : "";
     elements.transactionMessage.className = "transaction-message";
   }
 }
@@ -761,7 +726,7 @@ async function loadTransactionsForSelectedParcel({automatic = false} = {}) {
   elements.transactionMessage.textContent = "";
   elements.transactionMessage.className = "transaction-message";
   elements.transactionProgress.hidden = false;
-  elements.transactionProgressValue.textContent = "수집 데이터 확인 중";
+  elements.transactionProgressValue.textContent = "0 / 24개월";
   elements.transactionProgressBar.style.width = "0%";
   try {
     const result = await requestTransactions({
@@ -786,7 +751,7 @@ async function loadTransactionsForSelectedParcel({automatic = false} = {}) {
     if (automatic) elements.transactionQueryHint.textContent = "자동 조회하지 못했습니다. 잠시 후 다시 조회해 주세요.";
   } finally {
     elements.transactionProgress.hidden = true;
-    elements.loadTransactions.disabled = !hasTransactionSource();
+    elements.loadTransactions.disabled = !hasMolitApiKey();
     elements.loadTransactions.textContent = "최근 24개월 조회";
   }
 }
@@ -1317,7 +1282,7 @@ elements.transactionTypeTabs.addEventListener("click", (event) => {
   if (button) {
     transactionAutoSelectionToken += 1;
     updateTransactionType(button.dataset.transactionType);
-    if (selectedItem && selectedData && hasTransactionSource()) {
+    if (selectedItem && selectedData && hasMolitApiKey()) {
       elements.transactionQueryHint.textContent = `${TRANSACTION_TYPES[selectedTransactionType].label} 유형으로 최근 24개월을 바로 조회합니다.`;
       transactionInitializationPromise = loadTransactionsForSelectedParcel();
     }
