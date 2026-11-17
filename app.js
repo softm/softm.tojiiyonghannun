@@ -1,4 +1,5 @@
 import {buildReportModel} from "./report-model.js?v=20261013-12";
+import {buildTransactionInsights} from "./transaction-insights.js?v=20261117-1";
 import {addHistoryItem, filterHistoryItems, parseHistory, shouldShowRecentHistory} from "./history-model.js?v=20261012-9";
 import {buildParcelShareUrl, parseParcelShareUrl} from "./share-model.js?v=20261013-15";
 import {TRANSACTION_TYPES, hasMolitApiKey, recommendTransactionType, requestTransactions} from "./transaction-api.js?v=20261013-11";
@@ -675,11 +676,44 @@ function renderTransactionList(items, definition) {
     const article = createElement("article", "transaction-item");
     const head = createElement("div", "transaction-item__head");
     head.append(createElement("strong", "", formatDealAmount(item.amount)), createElement("time", "", formatContractDate(item.contractDate)));
-    const title = item.buildingName || [item.legalDong, item.jibun].filter(Boolean).join(" ") || TRANSACTION_TYPES[item.type].label;
-    const meta = [item.area ? `${definition.areaKind} ${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(item.area)}㎡` : "", item.floor ? `${item.floor}층` : "", formatUnitPrice(item.unitPrice)].filter(Boolean);
+    const title = [item.area ? `${definition.areaKind} ${new Intl.NumberFormat("ko-KR", {maximumFractionDigits: 2}).format(item.area)}㎡` : "", item.floor ? `${item.floor}층` : ""].filter(Boolean).join(" · ") || item.buildingName || TRANSACTION_TYPES[item.type].label;
+    const meta = [item.buildingName || [item.legalDong, item.jibun].filter(Boolean).join(" "), formatUnitPrice(item.unitPrice)].filter(Boolean);
     article.append(head, createElement("b", "transaction-item__title", title), createElement("p", "", meta.join(" · ")));
     elements.transactionList.append(article);
   });
+}
+
+function renderTransactionInsights(result) {
+  let panel = document.querySelector("#transactionInsights");
+  if (!panel) {
+    panel = document.createElement("section");
+    panel.id = "transactionInsights";
+    panel.className = "transaction-insights";
+    panel.setAttribute("aria-label", "실거래가 분석 인사이트");
+    elements.transactionStats.before(panel);
+  }
+  panel.replaceChildren();
+  const insight = buildTransactionInsights(result);
+  panel.append(createElement("h4", "", "이 거래에서 읽을 수 있는 정보"));
+  const list = document.createElement("ul");
+  for (const message of insight.messages) list.append(createElement("li", "", message));
+  panel.append(list);
+  if (insight.areaGroups.length > 1) {
+    panel.append(createElement("h5", "", "면적대별 가격 비교"));
+    const table = document.createElement("div");
+    table.className = "transaction-area-groups";
+    for (const group of insight.areaGroups) {
+      const article = document.createElement("div");
+      article.append(
+        createElement("strong", "", `${group.area.toFixed(1)}㎡ 안팎`),
+        createElement("span", "", `${group.count}건 · 중간 거래금액 ${formatDealAmount(group.medianAmount)}`),
+        createElement("small", "", `㎡당 ${formatUnitPrice(group.medianUnitPrice)}`)
+      );
+      table.append(article);
+    }
+    panel.append(table);
+  }
+  panel.append(createElement("p", "transaction-insights__caution", insight.caution));
 }
 
 function renderTransactionResult(result) {
@@ -695,10 +729,11 @@ function renderTransactionResult(result) {
   if (result.truncated) notes.push("일부 월 최대 5페이지 표시");
   elements.transactionResultMeta.textContent = notes.join(" · ");
   elements.transactionStats.replaceChildren();
-  appendTransactionStat("거래 건수", `${result.totalCount}건`, exact ? "공개 지번 일치" : "비교 가능한 공개 거래");
+  appendTransactionStat("거래 건수", `${result.totalCount}건`);
   appendTransactionStat("최근 거래일", result.latestDate ? formatContractDate(result.latestDate) : "-");
   appendTransactionStat("거래금액 중앙값", formatDealAmount(result.medianAmount));
   appendTransactionStat("㎡당 중앙값", formatUnitPrice(result.medianUnitPrice), result.minUnitPrice ? `${formatUnitPrice(result.minUnitPrice)} ~ ${formatUnitPrice(result.maxUnitPrice)}` : "면적 정보 없음");
+  renderTransactionInsights(result);
   renderTransactionTrend(result.trend);
   renderTransactionList(result.items, result.definition);
   if (!result.totalCount) {
