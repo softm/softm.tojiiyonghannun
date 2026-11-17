@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildTransactionParcelQuery,buildTransactionTrend} from "../transaction-explorer.js";
+import {buildTransactionParcelQuery,buildTransactionTrend,unitPricePerPyeong} from "../transaction-explorer.js";
 
 test("가격 흐름은 월 대표값으로 합치지 않고 개별 계약을 날짜순으로 유지한다", () => {
   const items=[
@@ -21,4 +21,9 @@ test("가격 흐름은 월 대표값으로 합치지 않고 개별 계약을 날
 test("법정동 비교 거래에서 클릭할 필지 주소를 만든다", () => {
   assert.equal(buildTransactionParcelQuery("서울특별시 구로구 온수동 155",{legalDong:"온수동",jibun:"155-2",normalizedJibun:"155-2"}),"서울특별시 구로구 온수동 155-2");
   assert.equal(buildTransactionParcelQuery("서울특별시 구로구 온수동 155",{legalDong:"온수동",jibun:"",normalizedJibun:""}),"");
+});
+
+test("제곱미터당 가격을 평당 가격으로 변환한다", () => {
+  assert.equal(Math.round(unitPricePerPyeong(1000000)),3305785);
+  assert.equal(unitPricePerPyeong(0),0);
 });

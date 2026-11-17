@@ -26,5 +26,5 @@ test("new JavaScript modules are parseable",()=>{
 test("site mounts transaction style and versioned application script",()=>{
   const html=read("index.html");
   assert.match(html,/transaction-explorer\.css\?v=/);
-  assert.match(html,/src="\.\/app\.js\?v=20261117-2"/);
+  assert.match(html,/src="\.\/app\.js\?v=20261117-3"/);
 });
