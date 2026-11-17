@@ -1,0 +1,32 @@
+/* 거래 결과에만 적용. 검색/지도/주소 UI와 스타일 격리 */
+.txi {margin:18px 0 24px;padding:20px;border:1px solid #d6e5dc;border-radius:18px;background:#f8fbf9;color:#193e32}
+.txi-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.txi-heading-copy{font-size:19px;font-weight:900;letter-spacing:-.04em}
+.txi-scope{font-size:11px;font-weight:700;background:#deede5;color:#245b44;border-radius:999px;padding:5px 9px}
+.txi-intro{margin:0 0 10px;color:#647b6d;font-size:12px;line-height:1.5}
+.txi-filters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
+.txi-filter{font:inherit;font-size:12px;font-weight:800;min-height:37px;border-radius:100px;background:#fff;color:#3e6351;border:1px solid #d3e1d8;padding:7px 12px;cursor:pointer}
+.txi-filter.active,.txi-filter[aria-pressed=true]{background:#175b42;color:#fff;border-color:#175b42}
+.txi-filter:focus-visible{outline:2px solid #2c9066;outline-offset:3px}
+.txi-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.txi-stat{padding:13px 12px;min-width:0;border:1px solid #e0ebe4;border-radius:12px;background:#fff;display:grid;gap:5px}
+.txi-stat small{font-size:11px;color:#667b70}
+.txi-stat strong{font-size:clamp(14px,1.9vw,20px);line-height:1.35;overflow-wrap:anywhere;letter-spacing:-.03em}
+.txi-conclusion{font-size:13px;line-height:1.6;margin:13px 0 20px;padding:12px 13px;border-left:3px solid #2d8060;background:#edf6f0;border-radius:0 8px 8px 0}
+.txi-section-heading{margin:19px 0 11px;font-size:15px;letter-spacing:-.02em}
+.txi-chart{display:flex;gap:5px;align-items:stretch;overflow-x:auto;min-height:156px;padding:8px 3px 4px;border-bottom:1px solid #cfddd4}
+.txi-bar{min-width:23px;flex:1 0 24px;max-width:45px;height:150px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}
+.txi-bar i{display:block;width:76%;min-height:4px;background:linear-gradient(#7db89a,#247b59);border-radius:5px 5px 2px 2px}
+.txi-bar small{font-size:9px;white-space:nowrap;color:#637970}
+.txi-note,.txi-caution{font-size:11px;line-height:1.6;color:#6b7b73;margin:9px 0}
+.txi-trades{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.txi-trade{padding:13px;border:1px solid #e0e8e2;background:#fff;border-radius:12px;min-width:0}
+.txi-trade-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.txi-trade-head strong{font-size:17px;letter-spacing:-.03em}
+.txi-trade-head time{font-size:11px;color:#76867e;white-space:nowrap}
+.txi-trade-size{margin:8px 0 4px;font-size:13px;font-weight:800}
+.txi-trade-meta{font-size:11px;color:#637970;line-height:1.55;margin:0;overflow-wrap:anywhere}
+.txi-empty{color:#748279;font-size:12px;padding:14px}
+.transaction-results.txi-enhanced>.transaction-stats,.transaction-results.txi-enhanced>.transaction-trend,.transaction-results.txi-enhanced>.transaction-list-section{display:none}
+@media(max-width:740px){.txi{padding:14px 12px}.txi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.txi-trades{grid-template-columns:1fr}.txi-stat strong{font-size:16px}.txi-heading-copy{font-size:17px}}
+@media(prefers-reduced-motion:reduce){.txi *{scroll-behavior:auto}}
