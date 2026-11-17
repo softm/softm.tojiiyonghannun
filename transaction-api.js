@@ -1,4 +1,3 @@
-import {hasCollectedSource, loadCollectedTransactions} from "./transaction-collected.js?v=20261117-1";
 import {
   TRANSACTION_TYPES,
   analyzeTransactions,
@@ -30,10 +29,6 @@ export function getMolitApiKey() {
 
 export function hasMolitApiKey() {
   return Boolean(getMolitApiKey());
-}
-export function hasTransactionSource() {
-  // Whether at least one source may be attempted. Each collected month is validated separately.
-  return true;
 }
 
 function normalizedServiceKey(value) {
@@ -191,20 +186,8 @@ export async function requestTransactions({
   if (!definition) throw new TransactionApiError("지원하지 않는 거래 유형입니다.", "INVALID_TYPE");
   const {lawdCd} = parcelIdentity(pnu);
   const months = recentMonths(24, now);
-  let collected={months:new Map(),updatedAt:""};
-  if (hasCollectedSource(lawdCd)) {
-    try {
-      collected=await loadCollectedTransactions({type,lawdCd,parcelAddress,months,signal,fetchImpl});
-    } catch(error) {
-      if (signal?.aborted) throw error;
-      // Absent/unpublished shard Pages must never prevent existing API lookup.
-    }
-  }
   let completed = 0;
-  const tasks = months.map((month) => async () => {
-    const published=collected.months.get(month);
-    return published || fetchMonth({type, lawdCd, month, signal, fetchImpl});
-  });
+  const tasks = months.map((month) => async () => fetchMonth({type, lawdCd, month, signal, fetchImpl}));
   const settled = await runWithConcurrency(tasks, 3, () => {
     completed += 1;
     onProgress({completed, total: months.length, percent: Math.round(completed / months.length * 100)});
@@ -225,9 +208,7 @@ export async function requestTransactions({
     requestedMonths: months.length,
     failedMonths: failures.length,
     truncated: fulfilled.some((record) => record.truncated),
-    cachedMonths: fulfilled.filter((record) => record.cached).length,
-    collectedMonths: fulfilled.filter((record) => record.source === "collected").length,
-    collectedUpdatedAt: collected.updatedAt || ""
+    cachedMonths: fulfilled.filter((record) => record.cached).length
   };
 }
 
