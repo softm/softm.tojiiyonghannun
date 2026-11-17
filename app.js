@@ -1316,7 +1316,17 @@ elements.form.addEventListener("submit", (event) => {
   searchAddress(query);
 });
 
-elements.input.addEventListener("focus", renderHistoryAutocomplete);
+// 주소 입력에 진입하면 검색 폼을 화면 상단으로 이동한다.
+// 자동완성 렌더 이후 위치를 계산하며, 주소 검색/제출 로직에는 영향을 주지 않는다.
+function scrollAddressInputToTop() {
+  if (document.activeElement !== elements.input) return;
+  const top = Math.max(0, window.scrollY + elements.form.getBoundingClientRect().top - 12);
+  window.scrollTo({top, behavior: "instant"});
+}
+elements.input.addEventListener("focus", () => {
+  renderHistoryAutocomplete();
+  window.requestAnimationFrame(scrollAddressInputToTop);
+});
 elements.input.addEventListener("input", () => {
   renderHistoryAutocomplete();
   if (!elements.input.value.trim() && elements.summary.hidden) {
@@ -1373,7 +1383,7 @@ elements.searchAgain.addEventListener("click", () => {
   setStatus("");
   elements.input.select();
   elements.input.focus();
-  window.scrollTo({top: elements.form.offsetTop - 40, behavior: "smooth"});
+  window.requestAnimationFrame(scrollAddressInputToTop);
 });
 
 elements.clearHistory.addEventListener("click", () => {
