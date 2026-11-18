@@ -1422,6 +1422,13 @@ elements.clearHistory.addEventListener("click", () => {
 
 globalThis.TojiIyongAds?.init();
 renderHistory();
+const startupLoader = document.getElementById("startupLoader");
+if (startupLoader) {
+  window.requestAnimationFrame(() => {
+    startupLoader.classList.add("is-ready");
+    window.setTimeout(() => startupLoader.remove(), 320);
+  });
+}
 const sharedParcel = parseParcelShareUrl(window.location.href);
 if (sharedParcel) {
   elements.input.value = sharedParcel.parcelAddress || sharedParcel.primaryAddress;
