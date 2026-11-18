@@ -25,6 +25,10 @@ test("new JavaScript modules are parseable",()=>{
 });
 test("site mounts transaction style and versioned application script",()=>{
   const html=read("index.html");
+  const app=read("app.js");
   assert.match(html,/transaction-explorer\.css\?v=/);
-  assert.match(html,/src="\.\/app\.js\?v=20261117-3"/);
+  assert.match(html,/src="\.\/app\.js\?v=20261118-4"/);
+  assert.match(html,/id="startupLoader"/);
+  assert.match(html,/startupSafetyExit/);
+  assert.match(app,/startupLoader\.classList\.add\("is-ready"\)/);
 });
