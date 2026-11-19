@@ -6,6 +6,14 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "dist");
 const publicFiles = [
   "index.html",
+  "manifest.webmanifest",
+  "app-icon.svg",
+  "icon-192.png",
+  "icon-512.png",
+  "apple-touch-icon.png",
+  "hannun-pwa.js",
+  "hannun-pwa.css",
+  "sw.js",
   "privacy.html",
   "sources.html",
   "adfit-config.js",
